@@ -7,14 +7,19 @@ from PIL import Image
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import numpy as np
+from collections import deque
 
 
 # Select CUDA or CPU
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
 print(torch.cuda.is_available())
 
+
 num_actions = 4 # Change to dynamic later
+trace_length = 4 # Images for experience buffer
+
+
 
 def create_model():
     model = nn.Sequential(
@@ -31,6 +36,20 @@ def create_model():
     
     return model
 
+
+class ExperienceBuffer:
+    def __init__(self, initial_frame, trace_length=4):
+        self.trace_length = trace_length
+        self.buffer = deque(maxlen=trace_length) # maxlen enables automatic deletion of oldest frame
+        
+        for _ in range(self.trace_length): # Append trace_length-times the current frame
+            self.buffer.append(initial_frame)
+    
+    def add_frame(self, frame):
+        self.buffer.append(frame)
+    
+    def get_stacked_frames(self):
+        return np.concatenate(list(self.buffer), axis=-1)  # Stack along channel-axis (height, width, channels)
 
 
 
@@ -72,11 +91,13 @@ if __name__ == '__main__':
     print("state_dim / height", state_dim)
     print("action_dim / number actions", action_dim)
 
-
+    
 
     for i in tqdm(range(args.episodes), desc="Episodes", position=0):
         print("reset " + str(i))
         obs = env.reset()
+
+        experience_buffer = ExperienceBuffer(obs)
 
         steps = 0
         done = False
@@ -89,6 +110,9 @@ if __name__ == '__main__':
             print("obs: " + str(obs))
             print(obs.size)
             print("info" + info)
+
+            experience_buffer.add_frame(obs)
+            print(experience_buffer.get_stacked_frames())
 
             # Test: Save images
             h, w, d = env.observation_space.shape
