@@ -9,7 +9,7 @@ import torch.nn as nn
 import torch.optim as optim
 import numpy as np
 from collections import deque
-
+import random
 
 # Select CUDA or CPU
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -18,6 +18,8 @@ print(torch.cuda.is_available())
 
 num_actions = 4 # Change to dynamic later
 trace_length = 4 # Images for experience buffer
+replay_size = 100000 # Memory amount (number of memories) for replay buffer (needs to be adjusted to fit RAM-size)
+batch_size = 32 # Amount of memories to be used per training-step
 
 
 
@@ -52,7 +54,27 @@ class ExperienceBuffer:
         return np.concatenate(list(self.buffer), axis=-1)  # Stack along channel-axis (height, width, channels)
 
 
+class ReplayMemory:
+    def __init__(self, replay_size):
+        self.memories = deque(maxlen=replay_size)
+    
+    def add_memory(self, transition):
+        self.memories.append(transition)
+    
+    def get_memories(self, batch_size):
+        batch = random.sample(self.memories, batch_size)
+        states, actions, rewards, next_states, dones = zip(*batch)
+        return states, actions, rewards, next_states, dones
 
+
+class Agent:
+    def __init__(self, replay_size, batch_size):
+        self.replay_buffer = ReplayMemory(replay_size)
+        self.batch_size = batch_size
+
+    def train(self):
+        # states, actions, rewards, next_states, dones = self.replay_buffer.get_memories(batch_size)
+        pass
 
 
 # Running main
@@ -98,21 +120,27 @@ if __name__ == '__main__':
         obs = env.reset()
 
         experience_buffer = ExperienceBuffer(obs)
+        mc_agent = Agent(replay_size, batch_size)
 
         steps = 0
         done = False
         while not done and (args.episodemaxsteps <= 0 or steps < args.episodemaxsteps):
             steps += 1
             action = env.action_space.sample()
-            obs, reward, done, info = env.step(action) # obs is a vector which is the image
+            obs, reward, done, info = env.step(action) # obs is a vector which is the image (next state)
             print("reward: " + str(reward))
             print("done: " + str(done))
             print("obs: " + str(obs))
             print(obs.size)
             print("info" + info)
 
+
+            mc_agent.replay_buffer.add_memory(((experience_buffer.get_stacked_frames), action, reward, obs, done))
+            print("memories", mc_agent.replay_buffer.memories)
+
             experience_buffer.add_frame(obs)
-            print(experience_buffer.get_stacked_frames())
+            print("experience_buffer", experience_buffer.get_stacked_frames())
+
 
             # Test: Save images
             h, w, d = env.observation_space.shape
