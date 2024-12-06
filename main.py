@@ -71,11 +71,26 @@ class Agent:
     def __init__(self, replay_size, batch_size):
         self.replay_buffer = ReplayMemory(replay_size)
         self.batch_size = batch_size
+        self.gamma = 0.95
+        self.q_network = create_model()
+        self.target_network = create_model()
 
     def train(self):
-        # states, actions, rewards, next_states, dones = self.replay_buffer.get_memories(batch_size)
-        pass
+        states, actions, rewards, next_states, dones = self.replay_buffer.get_memories(batch_size)
+        
+        states = torch.FloatTensor(states)
+        actions = torch.LongTensor(actions)
+        rewards = torch.FloatTensor(rewards)
+        next_states = torch.FloatTensor(next_states)
+        dones = torch.FloatTensor(dones)
+    
+        # Computed for all items in the memory-batch
+        q_values = self.q_network(states).gather(1, actions.unsqueeze(1)).squeeze(1) # Predicted Q-Values for current state (online-network)
+        next_actions = self.q_network(next_states).argmax(dim=1) # Next actions predicted by online-network
+        next_q_values = self.target_network(next_states).gather(1, next_actions.unsqueeze(1)).squeeze(1) # Q-Values in the next state (target-network)
+        q_targets = rewards + self.gamma * next_q_values * (1 - dones) # Estimated future reward from taking action a in state s 
 
+      
 
 # Running main
 
