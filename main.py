@@ -72,17 +72,20 @@ class Agent:
         self.replay_buffer = ReplayMemory(replay_size)
         self.batch_size = batch_size
         self.gamma = 0.95
-        self.q_network = create_model()
-        self.target_network = create_model()
+        self.q_network = create_model().to(device)
+        self.target_network = create_model().to(device)
 
     def train(self):
+        if len(self.replay_buffer) < batch_size: # Return if the ReplayMemory doesn't have enough memories yet
+            return
+
         states, actions, rewards, next_states, dones = self.replay_buffer.get_memories(batch_size)
         
-        states = torch.FloatTensor(states)
-        actions = torch.LongTensor(actions)
-        rewards = torch.FloatTensor(rewards)
-        next_states = torch.FloatTensor(next_states)
-        dones = torch.FloatTensor(dones)
+        states = torch.FloatTensor(states).to(device)
+        actions = torch.LongTensor(actions).to(device)
+        rewards = torch.FloatTensor(rewards).to(device)
+        next_states = torch.FloatTensor(next_states).to(device)
+        dones = torch.FloatTensor(dones).to(device)
     
         # Computed for all items in the memory-batch
         q_values = self.q_network(states).gather(1, actions.unsqueeze(1)).squeeze(1) # Predicted Q-Values for current state (online-network)
