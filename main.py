@@ -90,7 +90,11 @@ class Agent:
         next_q_values = self.target_network(next_states).gather(1, next_actions.unsqueeze(1)).squeeze(1) # Q-Values in the next state (target-network)
         q_targets = rewards + self.gamma * next_q_values * (1 - dones) # Estimated future reward from taking action a in state s 
 
-      
+        # Actual learning
+        loss = nn.MSELoss()(q_values, q_targets) # Loss (difference between prediction and target)
+        self.optimizer.zero_grad() # Reset gradients
+        loss.backward() # Backpropagation
+        self.optimizer.step() # Update weights
 
 # Running main
 
