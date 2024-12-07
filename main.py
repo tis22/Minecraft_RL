@@ -73,6 +73,7 @@ class Agent:
         self.batch_size = batch_size
         self.gamma = 0.95
         self.learningRate = 0.0001
+        self.target_network_update_frequency = 1000
         self.q_network = create_model().to(device)
         self.target_network = create_model().to(device)
         self.optimizer = optim.Adam(self.q_network.parameters(), lr=self.learningRate)
@@ -102,10 +103,15 @@ class Agent:
         self.optimizer.step() # Update weights
 
     def select_action(self):
+        # Exploration vs. Exploitation
         pass
 
     def train(self):
-        pass
+        for _ in range(2): # For each step the agent does the network will be trained two times
+            self.update_online_network()
+        
+        if len(self.replay_buffer) % self.target_network_update_frequency: # Update the target network every update_frequency-steps (memories made)
+             self.target_network.load_state_dict(self.q_network.state_dict())
 
 
 # Running main
