@@ -16,7 +16,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(torch.cuda.is_available())
 
 
-num_actions = 4 # Change to dynamic later
+num_actions = 4 # Change to dynamic later (action_dim = env.action_space.n)
 trace_length = 4 # Images for experience buffer
 replay_size = 100000 # Memory amount (number of memories) for replay buffer (needs to be adjusted to fit RAM-size)
 batch_size = 32 # Amount of memories to be used per training-step
@@ -73,6 +73,9 @@ class Agent:
         self.batch_size = batch_size
         self.gamma = 0.95
         self.learningRate = 0.0001
+        self.epsilon = 1.0
+        self.epsilon_end = 0.1
+        self.epsilon_decay = 0.999977 # Calculated, depends on amount of episodes (100.000)
         self.target_network_update_frequency = 1000
         self.q_network = create_model().to(device)
         self.target_network = create_model().to(device)
@@ -102,9 +105,14 @@ class Agent:
         loss.backward() # Backpropagation
         self.optimizer.step() # Update weights
 
-    def select_action(self):
+    def select_action(self, state):
         # Exploration vs. Exploitation
-        pass
+        if random.random() <= self.epsilon:
+            return random.randrange(num_actions)
+        else:
+            state = torch.FloatTensor(state).unsqueeze(0).to(device)
+            with torch.no_grad():
+                return torch.argmax(self.q_network(state)).item()
 
     def train(self):
         for _ in range(2): # For each step the agent does the network will be trained two times
@@ -184,5 +192,9 @@ if __name__ == '__main__':
             img = Image.fromarray(obs.reshape(h, w, d))
             img.save('images/image' + str(i) + '_' + str(steps) + '.png')
             time.sleep(2)
+        
+        # Decrease epsilon after each episode
+        # if mc_agent.epsilon > mc_agent.epsilon_end:
+        #    mc_agent.epsilon *= mc_agent.epsilon_decay
 
     env.close()
