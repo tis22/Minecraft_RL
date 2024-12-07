@@ -72,10 +72,12 @@ class Agent:
         self.replay_buffer = ReplayMemory(replay_size)
         self.batch_size = batch_size
         self.gamma = 0.95
+        self.learningRate = 0.0001
         self.q_network = create_model().to(device)
         self.target_network = create_model().to(device)
+        self.optimizer = optim.Adam(self.q_network.parameters(), lr=self.learningRate)
 
-    def train(self):
+    def update_online_network(self):
         if len(self.replay_buffer) < batch_size: # Return if the ReplayMemory doesn't have enough memories yet
             return
 
@@ -98,6 +100,13 @@ class Agent:
         self.optimizer.zero_grad() # Reset gradients
         loss.backward() # Backpropagation
         self.optimizer.step() # Update weights
+
+    def select_action(self):
+        pass
+
+    def train(self):
+        pass
+
 
 # Running main
 
