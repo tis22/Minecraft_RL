@@ -61,7 +61,7 @@ class ReplayMemory:
 
 
 class Agent:
-    def __init__(self, replay_size, batch_size):
+    def __init__(self, replay_size, batch_size, action_dim):
         self.replay_buffer = ReplayMemory(replay_size)
         self.batch_size = batch_size
         self.gamma = 0.95
@@ -74,8 +74,9 @@ class Agent:
         self.target_network = self.create_model().to(device)
         self.optimizer = optim.Adam(self.q_network.parameters(), lr=self.learningRate)
         self.episode_loss = 0
+        self.action_dim = action_dim
 
-    def create_model():
+    def create_model(self):
         model = nn.Sequential(
             nn.Conv2d(12, 32, kernel_size=6, stride=2),  # 4 Frames, RGB (= 12 channels)
             nn.ReLU(),
@@ -85,16 +86,16 @@ class Agent:
             nn.ReLU(),
             nn.Linear(64 * 8 * 8, 512), # Calculated
             nn.ReLU(),
-            nn.Linear(512, num_actions)
+            nn.Linear(512, self.action_dim)
         )
         
         return model
 
     def update_online_network(self):
-        if len(self.replay_buffer) < batch_size: # Return if the ReplayMemory doesn't have enough memories yet
+        if len(self.replay_buffer) < self.batch_size: # Return if the ReplayMemory doesn't have enough memories yet
             return
 
-        states, actions, rewards, next_states, dones = self.replay_buffer.get_memories(batch_size)
+        states, actions, rewards, next_states, dones = self.replay_buffer.get_memories(self.batch_size)
         
         states = torch.FloatTensor(states).to(device)
         actions = torch.LongTensor(actions).to(device)
@@ -119,7 +120,7 @@ class Agent:
     def select_action(self, state):
         # Exploration vs. Exploitation
         if random.random() <= self.epsilon:
-            return random.randrange(num_actions)
+            return random.randrange(self.action_dim)
         else:
             state = torch.FloatTensor(state).unsqueeze(0).to(device)
             with torch.no_grad():
@@ -137,7 +138,6 @@ class Agent:
 
 if __name__ == '__main__':
 
-    num_actions = 4 # Change to dynamic later (action_dim = env.action_space.n)
     trace_length = 4 # Images for experience buffer
     replay_size = 100000 # Memory amount (number of memories) for replay buffer (needs to be adjusted to fit RAM-size)
     batch_size = 32 # Amount of memories to be used per training-step
@@ -170,12 +170,12 @@ if __name__ == '__main__':
              episode=episode, resync=resync)
     
     state_dim = env.observation_space.shape[0]
-    action_dim = env.action_space.n
-    print("state_dim / height", state_dim)
-    print("action_dim / number actions", action_dim)
+    action_dim = env.action_space.n # Number of actions the agent can perform
+    # print("state_dim / height", state_dim)
+    # print("action_dim / number actions", action_dim)
 
     # Agent creation
-    mc_agent = Agent(replay_size, batch_size)
+    mc_agent = Agent(replay_size, batch_size, action_dim)
 
     completions = 0
 
