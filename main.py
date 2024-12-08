@@ -11,13 +11,25 @@ import numpy as np
 from collections import deque
 import random
 from torch.utils.tensorboard import SummaryWriter
+import os
+from datetime import datetime
 
 # Select CUDA or CPU
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(torch.cuda.is_available())
 
+# Create folders if not exists
+timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+log_dir = f'runs/training_{timestamp}'
+image_dir = f'images/training_{timestamp}'
+
+if not os.path.exists(log_dir):
+    os.makedirs(log_dir)
+
+if not os.path.exists(image_dir):
+    os.makedirs(image_dir)
+
 # For TensorBoard
-log_dir = 'runs/training_0'
 writer = SummaryWriter(log_dir) 
 
 class ExperienceBuffer:
@@ -129,6 +141,7 @@ if __name__ == '__main__':
     trace_length = 4 # Images for experience buffer
     replay_size = 100000 # Memory amount (number of memories) for replay buffer (needs to be adjusted to fit RAM-size)
     batch_size = 32 # Amount of memories to be used per training-step
+    saveimagesteps = 0 # 0 = no images will be saved, e.g. 2 = every 2 steps an image will be saved
 
     mission = 'missions/mobchase_single_agent.xml'
     port = 9000
@@ -205,9 +218,10 @@ if __name__ == '__main__':
                 # print("experience_buffer", experience_buffer.get_stacked_frames())
 
                 # Test: Save images
-                h, w, d = env.observation_space.shape
-                img = Image.fromarray(obs.reshape(h, w, d))
-                img.save('images/image' + str(episode) + '_' + str(steps) + '.png')
+                if saveimagesteps > 0 and steps % saveimagesteps == 0:
+                    h, w, d = env.observation_space.shape
+                    img = Image.fromarray(obs.reshape(h, w, d))
+                    img.save(f'{image_dir}/image_{episode}_{steps}.png')
 
                 # Update the observation
                 obs = next_obs
