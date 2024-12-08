@@ -22,23 +22,6 @@ replay_size = 100000 # Memory amount (number of memories) for replay buffer (nee
 batch_size = 32 # Amount of memories to be used per training-step
 
 
-
-def create_model():
-    model = nn.Sequential(
-        nn.Conv2d(12, 32, kernel_size=6, stride=2),  # 4 Frames, RGB (= 12 channels)
-        nn.ReLU(),
-        nn.Conv2d(32, 64, kernel_size=6, stride=2),
-        nn.ReLU(),
-        nn.Conv2d(64, 64, kernel_size=4, stride=2),
-        nn.ReLU(),
-        nn.Linear(64 * 8 * 8, 512), # Calculated
-        nn.ReLU(),
-        nn.Linear(512, num_actions)
-    )
-    
-    return model
-
-
 class ExperienceBuffer:
     def __init__(self, initial_frame, trace_length=4):
         self.trace_length = trace_length
@@ -77,9 +60,24 @@ class Agent:
         self.epsilon_end = 0.1
         self.epsilon_decay = 0.999977 # Calculated, depends on amount of episodes (100.000)
         self.target_network_update_frequency = 1000
-        self.q_network = create_model().to(device)
-        self.target_network = create_model().to(device)
+        self.q_network = self.create_model().to(device)
+        self.target_network = self.create_model().to(device)
         self.optimizer = optim.Adam(self.q_network.parameters(), lr=self.learningRate)
+
+    def create_model():
+        model = nn.Sequential(
+            nn.Conv2d(12, 32, kernel_size=6, stride=2),  # 4 Frames, RGB (= 12 channels)
+            nn.ReLU(),
+            nn.Conv2d(32, 64, kernel_size=6, stride=2),
+            nn.ReLU(),
+            nn.Conv2d(64, 64, kernel_size=4, stride=2),
+            nn.ReLU(),
+            nn.Linear(64 * 8 * 8, 512), # Calculated
+            nn.ReLU(),
+            nn.Linear(512, num_actions)
+        )
+        
+        return model
 
     def update_online_network(self):
         if len(self.replay_buffer) < batch_size: # Return if the ReplayMemory doesn't have enough memories yet
