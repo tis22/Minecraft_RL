@@ -154,47 +154,60 @@ if __name__ == '__main__':
     print("state_dim / height", state_dim)
     print("action_dim / number actions", action_dim)
 
-    
+    # Agent creation
+    mc_agent = Agent(replay_size, batch_size)
 
     for i in tqdm(range(episodes), desc="Episodes", position=0):
         print("reset " + str(i))
 
         # Initial observation and creation ExperienceBuffer
         obs = env.reset()
-        experience_buffer = ExperienceBuffer(obs)
-
-        # Agent creation
-        mc_agent = Agent(replay_size, batch_size)
+        experience_buffer = ExperienceBuffer(obs) # Will be recreated every episode
 
         steps = 0
         done = False
         with tqdm(total=episodemaxsteps if episodemaxsteps > 0 else None, desc="Episode steps", position=1, leave=False) as step_bar:
             while not done and (episodemaxsteps <= 0 or steps < episodemaxsteps):
                 steps += 1
-                action = env.action_space.sample()
-                obs, reward, done, info = env.step(action) # obs is a vector which is the image (next state)
-                print("reward: " + str(reward))
-                print("done: " + str(done))
-                print("obs: " + str(obs))
-                print(obs.size)
-                print("info" + info)
 
+                # Select action (random or via model)
+                action = mc_agent.select_action(obs)
 
-                mc_agent.replay_buffer.add_memory(((experience_buffer.get_stacked_frames), action, reward, obs, done))
-                print("memories", mc_agent.replay_buffer.memories)
+                # Perform action
+                next_obs, reward, done, info = env.step(action)
 
-                experience_buffer.add_frame(obs)
-                print("experience_buffer", experience_buffer.get_stacked_frames())
+                # print("reward: " + str(reward))
+                # print("done: " + str(done))
+                # print("obs: " + str(next_obs))
+                # print(next_obs.size)
+                # print("info" + info)
 
+                # Save the experience to the memory first
+                mc_agent.replay_buffer.add_memory(((experience_buffer.get_stacked_frames), action, reward, next_obs, done))
+                # print("memories", mc_agent.replay_buffer.memories)
+                
+                # Only now add the next_obs to the frame stack 
+                experience_buffer.add_frame(next_obs)
+                # print("experience_buffer", experience_buffer.get_stacked_frames())
 
                 # Test: Save images
                 h, w, d = env.observation_space.shape
                 img = Image.fromarray(obs.reshape(h, w, d))
                 img.save('images/image' + str(i) + '_' + str(steps) + '.png')
-                time.sleep(2)
+
+                # Update the observation
+                obs = next_obs
+
+                # Train the network
+                mc_agent.train()
+
+                # Update tqdm bar
+                step_bar.update(1)
+
+                time.sleep(2) # Turn off for training / decrease
         
         # Decrease epsilon after each episode
-        # if mc_agent.epsilon > mc_agent.epsilon_end:
-        #    mc_agent.epsilon *= mc_agent.epsilon_decay
+        if mc_agent.epsilon > mc_agent.epsilon_end:
+            mc_agent.epsilon *= mc_agent.epsilon_decay
 
     env.close()
