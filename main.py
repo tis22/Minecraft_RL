@@ -10,11 +10,15 @@ import torch.optim as optim
 import numpy as np
 from collections import deque
 import random
+from torch.utils.tensorboard import SummaryWriter
 
 # Select CUDA or CPU
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(torch.cuda.is_available())
 
+# For TensorBoard
+log_dir = 'runs/training_0'
+writer = SummaryWriter(log_dir) 
 
 class ExperienceBuffer:
     def __init__(self, initial_frame, trace_length=4):
@@ -57,6 +61,7 @@ class Agent:
         self.q_network = self.create_model().to(device)
         self.target_network = self.create_model().to(device)
         self.optimizer = optim.Adam(self.q_network.parameters(), lr=self.learningRate)
+        self.episode_loss = 0
 
     def create_model():
         model = nn.Sequential(
@@ -96,6 +101,8 @@ class Agent:
         self.optimizer.zero_grad() # Reset gradients
         loss.backward() # Backpropagation
         self.optimizer.step() # Update weights
+
+        self.episode_loss += loss.item()
 
     def select_action(self, state):
         # Exploration vs. Exploitation
@@ -157,15 +164,20 @@ if __name__ == '__main__':
     # Agent creation
     mc_agent = Agent(replay_size, batch_size)
 
-    for i in tqdm(range(episodes), desc="Episodes", position=0):
-        print("reset " + str(i))
+    completions = 0
+
+    for episode in tqdm(range(episodes), desc="Episodes", position=0):
+        print("reset " + str(episode))
 
         # Initial observation and creation ExperienceBuffer
         obs = env.reset()
         experience_buffer = ExperienceBuffer(obs) # Will be recreated every episode
 
+        episode_reward = 0
+        mc_agent.episode_loss = 0
         steps = 0
         done = False
+
         with tqdm(total=episodemaxsteps if episodemaxsteps > 0 else None, desc="Episode steps", position=1, leave=False) as step_bar:
             while not done and (episodemaxsteps <= 0 or steps < episodemaxsteps):
                 steps += 1
@@ -175,6 +187,8 @@ if __name__ == '__main__':
 
                 # Perform action
                 next_obs, reward, done, info = env.step(action)
+                
+                episode_reward += reward
 
                 # print("reward: " + str(reward))
                 # print("done: " + str(done))
@@ -193,7 +207,7 @@ if __name__ == '__main__':
                 # Test: Save images
                 h, w, d = env.observation_space.shape
                 img = Image.fromarray(obs.reshape(h, w, d))
-                img.save('images/image' + str(i) + '_' + str(steps) + '.png')
+                img.save('images/image' + str(episode) + '_' + str(steps) + '.png')
 
                 # Update the observation
                 obs = next_obs
@@ -210,4 +224,17 @@ if __name__ == '__main__':
         if mc_agent.epsilon > mc_agent.epsilon_end:
             mc_agent.epsilon *= mc_agent.epsilon_decay
 
+        if done == True:
+            completions += 1
+            writer.add_scalar('Reward per completion', episode_reward, completions)
+        
+        # Tracing with TensorBoard
+        writer.add_scalar('Epsilon', mc_agent.epsilon, episode)
+        writer.add_scalar('Reward', episode_reward, episode)
+        writer.add_scalar('Reward/step per episode', episode_reward / steps, episode)
+        writer.add_scalar('Steps', steps, episode)
+        writer.add_scalar('Average loss', mc_agent.episode_loss	/ steps * 2 , episode) # *2 due to two times training per step
+        writer.add_scalar('Completions', completions, episode)
+
     env.close()
+    writer.close()
