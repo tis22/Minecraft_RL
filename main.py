@@ -16,12 +16,6 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(torch.cuda.is_available())
 
 
-num_actions = 4 # Change to dynamic later (action_dim = env.action_space.n)
-trace_length = 4 # Images for experience buffer
-replay_size = 100000 # Memory amount (number of memories) for replay buffer (needs to be adjusted to fit RAM-size)
-batch_size = 32 # Amount of memories to be used per training-step
-
-
 class ExperienceBuffer:
     def __init__(self, initial_frame, trace_length=4):
         self.trace_length = trace_length
@@ -124,32 +118,36 @@ class Agent:
 
 if __name__ == '__main__':
 
-    parser = argparse.ArgumentParser(description='malmovnv test')
-    parser.add_argument('--mission', type=str, default='missions/mobchase_single_agent.xml', help='the mission xml')
-    parser.add_argument('--port', type=int, default=9000, help='the mission server port')
-    parser.add_argument('--server', type=str, default='127.0.0.1', help='the mission server DNS or IP address')
-    parser.add_argument('--port2', type=int, default=None, help="(Multi-agent) role N's mission port. Defaults to server port.")
-    parser.add_argument('--server2', type=str, default=None, help="(Multi-agent) role N's server DNS or IP")
-    parser.add_argument('--episodes', type=int, default=5, help='the number of resets to perform - default is 1')
-    parser.add_argument('--episode', type=int, default=0, help='the start episode - default is 0')
-    parser.add_argument('--role', type=int, default=0, help='the agent role - defaults to 0')
-    parser.add_argument('--episodemaxsteps', type=int, default=0, help='max number of steps per episode')
-    parser.add_argument('--saveimagesteps', type=int, default=0, help='save an image every N steps')
-    parser.add_argument('--resync', type=int, default=0, help='exit and re-sync every N resets - default 0 meaning never.')
-    parser.add_argument('--experimentUniqueId', type=str, default='test1', help="the experiment's unique id.")
-    args = parser.parse_args()
-    if args.server2 is None:
-        args.server2 = args.server
+    num_actions = 4 # Change to dynamic later (action_dim = env.action_space.n)
+    trace_length = 4 # Images for experience buffer
+    replay_size = 100000 # Memory amount (number of memories) for replay buffer (needs to be adjusted to fit RAM-size)
+    batch_size = 32 # Amount of memories to be used per training-step
 
-    xml = Path(args.mission).read_text()
+    mission = 'missions/mobchase_single_agent.xml'
+    port = 9000
+    server = '127.0.0.1'
+    port2 = None
+    server2 = None
+    episodes = 100000
+    episode = 0
+    role = 0
+    episodemaxsteps = 200 # Change according to map later
+    saveimagesteps = 0
+    resync = 0
+    experimentUniqueId = 'test1'
+
+    if server2 is None:
+        server2 = server
+
+    xml = Path(mission).read_text()
     env = malmoenv.make()
 
-    env.init(xml, args.port,
-             server=args.server,
-             server2=args.server2, port2=args.port2,
-             role=args.role,
-             exp_uid=args.experimentUniqueId,
-             episode=args.episode, resync=args.resync)
+    env.init(xml, port,
+             server=server,
+             server2=server2, port2=port2,
+             role=role,
+             exp_uid=experimentUniqueId,
+             episode=episode, resync=resync)
     
     state_dim = env.observation_space.shape[0]
     action_dim = env.action_space.n
@@ -158,38 +156,42 @@ if __name__ == '__main__':
 
     
 
-    for i in tqdm(range(args.episodes), desc="Episodes", position=0):
+    for i in tqdm(range(episodes), desc="Episodes", position=0):
         print("reset " + str(i))
-        obs = env.reset()
 
+        # Initial observation and creation ExperienceBuffer
+        obs = env.reset()
         experience_buffer = ExperienceBuffer(obs)
+
+        # Agent creation
         mc_agent = Agent(replay_size, batch_size)
 
         steps = 0
         done = False
-        while not done and (args.episodemaxsteps <= 0 or steps < args.episodemaxsteps):
-            steps += 1
-            action = env.action_space.sample()
-            obs, reward, done, info = env.step(action) # obs is a vector which is the image (next state)
-            print("reward: " + str(reward))
-            print("done: " + str(done))
-            print("obs: " + str(obs))
-            print(obs.size)
-            print("info" + info)
+        with tqdm(total=episodemaxsteps if episodemaxsteps > 0 else None, desc="Episode steps", position=1, leave=False) as step_bar:
+            while not done and (episodemaxsteps <= 0 or steps < episodemaxsteps):
+                steps += 1
+                action = env.action_space.sample()
+                obs, reward, done, info = env.step(action) # obs is a vector which is the image (next state)
+                print("reward: " + str(reward))
+                print("done: " + str(done))
+                print("obs: " + str(obs))
+                print(obs.size)
+                print("info" + info)
 
 
-            mc_agent.replay_buffer.add_memory(((experience_buffer.get_stacked_frames), action, reward, obs, done))
-            print("memories", mc_agent.replay_buffer.memories)
+                mc_agent.replay_buffer.add_memory(((experience_buffer.get_stacked_frames), action, reward, obs, done))
+                print("memories", mc_agent.replay_buffer.memories)
 
-            experience_buffer.add_frame(obs)
-            print("experience_buffer", experience_buffer.get_stacked_frames())
+                experience_buffer.add_frame(obs)
+                print("experience_buffer", experience_buffer.get_stacked_frames())
 
 
-            # Test: Save images
-            h, w, d = env.observation_space.shape
-            img = Image.fromarray(obs.reshape(h, w, d))
-            img.save('images/image' + str(i) + '_' + str(steps) + '.png')
-            time.sleep(2)
+                # Test: Save images
+                h, w, d = env.observation_space.shape
+                img = Image.fromarray(obs.reshape(h, w, d))
+                img.save('images/image' + str(i) + '_' + str(steps) + '.png')
+                time.sleep(2)
         
         # Decrease epsilon after each episode
         # if mc_agent.epsilon > mc_agent.epsilon_end:
