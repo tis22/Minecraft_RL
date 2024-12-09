@@ -75,6 +75,7 @@ class Agent:
         self.optimizer = optim.Adam(self.q_network.parameters(), lr=self.learningRate)
         self.episode_loss = 0
         self.action_dim = action_dim
+        self.min_memories = 1000
 
     def create_model(self):
         model = nn.Sequential(
@@ -92,7 +93,7 @@ class Agent:
         return model
 
     def update_online_network(self):
-        if len(self.replay_buffer) < self.batch_size: # Return if the ReplayMemory doesn't have enough memories yet
+        if len(self.replay_buffer) < self.min_memories: # Return if the ReplayMemory doesn't have enough memories yet
             return
 
         states, actions, rewards, next_states, dones = self.replay_buffer.get_memories(self.batch_size)
@@ -139,7 +140,7 @@ class Agent:
 if __name__ == '__main__':
 
     trace_length = 4 # Images for experience buffer
-    replay_size = 100000 # Memory amount (number of memories) for replay buffer (needs to be adjusted to fit RAM-size)
+    replay_size = 100000 # Memory amount (number of memories (steps, each: 4 frames & next_obs-frame)) for replay buffer (needs to be adjusted to fit RAM-size)
     batch_size = 32 # Amount of memories to be used per training-step
     saveimagesteps = 0 # 0 = no images will be saved, e.g. 2 = every 2 steps an image will be saved
 
