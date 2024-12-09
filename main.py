@@ -142,7 +142,7 @@ class Agent:
 if __name__ == '__main__':
 
     trace_length = 4 # Images for experience buffer
-    replay_size = 100000 # Memory amount (number of memories (steps, each: 4 frames & next_obs-frame)) for replay buffer (needs to be adjusted to fit RAM-size)
+    replay_size = 100000 # Memory amount (number of memories (steps, each: current 4 frames & latest 3 + new frame)) for replay buffer (needs to be adjusted to fit RAM-size)
     batch_size = 32 # Amount of memories to be used per training-step
     saveimagesteps = 0 # 0 = no images will be saved, e.g. 2 = every 2 steps an image will be saved
 
