@@ -44,7 +44,9 @@ class ExperienceBuffer:
         self.buffer.append(frame)
     
     def get_stacked_frames(self):
-        return np.concatenate(list(self.buffer), axis=-1)  # Stack along channel-axis (height, width, channels)
+        stacked_frames = np.concatenate(list(self.buffer), axis=-1)
+        stacked_frames = np.transpose(stacked_frames, (2, 0, 1))
+        return stacked_frames # (trace_length * channels, height, width)
 
 
 class ReplayMemory:
@@ -98,10 +100,10 @@ class Agent:
 
         states, actions, rewards, next_states, dones = self.replay_buffer.get_memories(self.batch_size)
         
-        states = torch.FloatTensor(states).to(device)
+        states = torch.FloatTensor(states).to(device) # Adds batch dim (batch_size, channels, height, width)
         actions = torch.LongTensor(actions).to(device)
         rewards = torch.FloatTensor(rewards).to(device)
-        next_states = torch.FloatTensor(next_states).to(device)
+        next_states = torch.FloatTensor(next_states).to(device) # Adds batch dim (batch_size, channels, height, width)
         dones = torch.FloatTensor(dones).to(device)
     
         # Computed for all items in the memory-batch
@@ -123,7 +125,7 @@ class Agent:
         if random.random() <= self.epsilon:
             return random.randrange(self.action_dim)
         else:
-            state = torch.FloatTensor(state).unsqueeze(0).to(device)
+            state = torch.FloatTensor(state).unsqueeze(0).to(device) # PyTorch needs (1, channels, height, width)
             with torch.no_grad():
                 return torch.argmax(self.q_network(state)).item()
 
@@ -196,10 +198,10 @@ if __name__ == '__main__':
             while not done and (episodemaxsteps <= 0 or steps < episodemaxsteps):
                 steps += 1
 
-                # Select action (random or via model)
-                action = mc_agent.select_action(obs)
+                state = np.copy(experience_buffer.get_stacked_frames())
 
-                # Perform action
+                # Select and perform action (random or via model)
+                action = mc_agent.select_action(state)
                 next_obs, reward, done, info = env.step(action)
                 
                 episode_reward += reward
@@ -209,23 +211,20 @@ if __name__ == '__main__':
                 # print("obs: " + str(next_obs))
                 # print(next_obs.size)
                 # print("info" + info)
-
-                # Save the experience to the memory first
-                mc_agent.replay_buffer.add_memory(((experience_buffer.get_stacked_frames), action, reward, next_obs, done))
-                # print("memories", mc_agent.replay_buffer.memories)
                 
-                # Only now add the next_obs to the frame stack 
+                # Update the observation: add the next_obs to the frame stack 
                 experience_buffer.add_frame(next_obs)
                 # print("experience_buffer", experience_buffer.get_stacked_frames())
 
+                # Now save the experience to the memory
+                mc_agent.replay_buffer.add_memory((state, action, reward, experience_buffer.get_stacked_frames(), done))
+                # print("memories", mc_agent.replay_buffer.memories)
+                
                 # Test: Save images
                 if saveimagesteps > 0 and steps % saveimagesteps == 0:
                     h, w, d = env.observation_space.shape
                     img = Image.fromarray(obs.reshape(h, w, d))
                     img.save(f'{image_dir}/image_{episode}_{steps}.png')
-
-                # Update the observation
-                obs = next_obs
 
                 # Train the network
                 mc_agent.train()
