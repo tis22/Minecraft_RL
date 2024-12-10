@@ -14,10 +14,6 @@ from torch.utils.tensorboard import SummaryWriter
 import os
 from datetime import datetime
 
-# Select CUDA or CPU
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print(torch.cuda.is_available())
-
 # Create folders if not exists
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 log_dir = f'runs/training_{timestamp}'
@@ -77,8 +73,9 @@ class Agent:
         self.epsilon_end = 0.1
         self.epsilon_decay = 0.999977 # Calculated, depends on amount of episodes (100.000)
         self.target_network_update_frequency = 1000
-        self.q_network = self.create_model().to(device)
-        self.target_network = self.create_model().to(device)
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu") # Select CUDA or CPU
+        self.q_network = self.create_model().to(self.device)
+        self.target_network = self.create_model().to(self.device)
         self.optimizer = optim.Adam(self.q_network.parameters(), lr=self.learningRate)
         self.episode_loss = 0
         self.action_dim = action_dim
@@ -105,11 +102,11 @@ class Agent:
 
         states, actions, rewards, next_states, dones = self.replay_buffer.get_memories(self.batch_size)
         
-        states = torch.FloatTensor(states).to(device) # Adds batch dim (batch_size, channels, height, width)
-        actions = torch.LongTensor(actions).to(device)
-        rewards = torch.FloatTensor(rewards).to(device)
-        next_states = torch.FloatTensor(next_states).to(device) # Adds batch dim (batch_size, channels, height, width)
-        dones = torch.FloatTensor(dones).to(device)
+        states = torch.FloatTensor(states).to(self.device) # Adds batch dim (batch_size, channels, height, width)
+        actions = torch.LongTensor(actions).to(self.device)
+        rewards = torch.FloatTensor(rewards).to(self.device)
+        next_states = torch.FloatTensor(next_states).to(self.device) # Adds batch dim (batch_size, channels, height, width)
+        dones = torch.FloatTensor(dones).to(self.device)
     
         # Computed for all items in the memory-batch
         q_values = self.q_network(states).gather(1, actions.unsqueeze(1)).squeeze(1) # Predicted Q-Values for current state (online-network)
@@ -130,7 +127,7 @@ class Agent:
         if random.random() <= self.epsilon:
             return random.randrange(self.action_dim)
         else:
-            state = torch.FloatTensor(state).unsqueeze(0).to(device) # PyTorch needs (1, channels, height, width)
+            state = torch.FloatTensor(state).unsqueeze(0).to(self.device) # PyTorch needs (1, channels, height, width)
             with torch.no_grad():
                 return torch.argmax(self.q_network(state)).item()
 
