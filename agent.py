@@ -5,6 +5,7 @@ import numpy as np
 from collections import deque
 import random
 import os
+import gdown
 
 class ExperienceBuffer:
     def __init__(self, initial_frame, trace_length=4):
@@ -143,3 +144,8 @@ class Agent:
         
         else:
             raise FileNotFoundError(f"No checkpoint found at {filepath}")
+        
+    def download_model(self, filepath):
+        url = ''
+        model_path = gdown.download(url, filepath, fuzzy=True, use_cookies=False, quiet=False)
+        self.q_network = torch.load(filepath)

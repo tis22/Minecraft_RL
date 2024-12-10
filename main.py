@@ -15,27 +15,36 @@ import os
 from datetime import datetime
 from agent import ExperienceBuffer, ReplayMemory, Agent
 
-# Create folders if not exists
-timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-log_dir = f'runs/training_{timestamp}'
-image_dir = f'images/training_{timestamp}'
-checkpoint_dir = 'checkpoints'
+def train():
+    pass
 
-if not os.path.exists(log_dir):
-    os.makedirs(log_dir)
-
-if not os.path.exists(image_dir):
-    os.makedirs(image_dir)
-
-if not os.path.exists(checkpoint_dir):
-    os.makedirs(checkpoint_dir)
-checkpoint_path = os.path.join(checkpoint_dir, 'checkpoint.pth')
-
-# For TensorBoard
-writer = SummaryWriter(log_dir) 
-
+def evaluate():
+    if os.path.isfile(checkpoint_path):
+        mc_agent.q_network = torch.load(checkpoint_path)
+    else:
+        print(f"Model does not exist. Downloading from Google Drive.")
+        mc_agent.download_model(checkpoint_path)
 
 if __name__ == '__main__':
+    # Create folders if not exists
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    log_dir = f'runs/training_{timestamp}'
+    image_dir = f'images/training_{timestamp}'
+    checkpoint_dir = 'checkpoints'
+
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+
+    if not os.path.exists(image_dir):
+        os.makedirs(image_dir)
+
+    if not os.path.exists(checkpoint_dir):
+        os.makedirs(checkpoint_dir)
+    checkpoint_path = os.path.join(checkpoint_dir, 'checkpoint.pth')
+
+    # For TensorBoard
+    writer = SummaryWriter(log_dir) 
+
 
     trace_length = 4 # Images for experience buffer
     replay_size = 100000 # Memory amount (number of memories (steps, each: current 4 frames & latest 3 + new frame)) for replay buffer (needs to be adjusted to fit RAM-size)
@@ -44,6 +53,7 @@ if __name__ == '__main__':
     resume_episode = 0
     completions = 0
     checkpoint_interval = 100
+    permanent_checkpoint_interval = 10000
 
     mission = 'missions/mobchase_single_agent.xml'
     port = 9000
@@ -159,6 +169,11 @@ if __name__ == '__main__':
         # Create checkpoint
         if episode % checkpoint_interval == 0:
             mc_agent.create_checkpoint(checkpoint_path, episode, completions)
+        
+        # Create permanent checkpoints for evaluation
+        if episode % permanent_checkpoint_interval == 0:
+            permanent_checkpoint_path = os.path.join(checkpoint_dir, f'checkpoint_ep{episode}.pth')
+            mc_agent.create_checkpoint(permanent_checkpoint_path, episode, completions)
 
     env.close()
     writer.close()
