@@ -22,12 +22,17 @@ print(torch.cuda.is_available())
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 log_dir = f'runs/training_{timestamp}'
 image_dir = f'images/training_{timestamp}'
+checkpoint_dir = 'checkpoints'
 
 if not os.path.exists(log_dir):
     os.makedirs(log_dir)
 
 if not os.path.exists(image_dir):
     os.makedirs(image_dir)
+
+if not os.path.exists(checkpoint_dir):
+    os.makedirs(checkpoint_dir)
+checkpoint_path = os.path.join(checkpoint_dir, 'checkpoint.pth')
 
 # For TensorBoard
 writer = SummaryWriter(log_dir) 
@@ -136,6 +141,38 @@ class Agent:
         if len(self.replay_buffer) % self.target_network_update_frequency: # Update the target network every update_frequency-steps (memories made)
              self.target_network.load_state_dict(self.q_network.state_dict())
 
+    def create_checkpoint(self, filepath, episode, completions):
+        checkpoint = {
+            'q_network_state_dict': self.q_network.state_dict(),
+            'target_model_state_dict': self.target_network.state_dict(),
+            'optimizer_state_dict': self.optimizer.state_dict(),
+            'replay_buffer': list(self.replay_buffer.memories),
+            'replay_size': self.replay_buffer.memories.maxlen,
+            'epsilon': self.epsilon,
+            'episode': episode,
+            'completions': completions
+        }
+
+        torch.save(checkpoint, filepath)
+
+    def load_checkpoint(self, filepath):
+        if os.path.isfile(filepath):
+            checkpoint = torch.load(filepath)
+            
+            self.q_network.load_state_dict(checkpoint['q_network_state_dict'])
+            self.target_network.load_state_dict(checkpoint['target_model_state_dict'])
+            self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+            replay_size = checkpoint['replay_size']
+            self.replay_buffer = ReplayMemory(replay_size)
+            self.replay_buffer.memories = deque(checkpoint['replay_buffer'], maxlen=replay_size)
+            self.epsilon = checkpoint['epsilon']
+            episode = checkpoint['episode']
+            completions = checkpoint['completions']
+
+            return episode, completions
+        
+        else:
+            raise FileNotFoundError(f"No checkpoint found at {filepath}")
 
 # Running main
 
@@ -145,6 +182,9 @@ if __name__ == '__main__':
     replay_size = 100000 # Memory amount (number of memories (steps, each: current 4 frames & latest 3 + new frame)) for replay buffer (needs to be adjusted to fit RAM-size)
     batch_size = 32 # Amount of memories to be used per training-step
     saveimagesteps = 0 # 0 = no images will be saved, e.g. 2 = every 2 steps an image will be saved
+    resume_episode = 0
+    completions = 0
+    checkpoint_interval = 100
 
     mission = 'missions/mobchase_single_agent.xml'
     port = 9000
@@ -180,9 +220,16 @@ if __name__ == '__main__':
     # Agent creation
     mc_agent = Agent(replay_size, batch_size, action_dim)
 
-    completions = 0
+    # Load checkpoint if exists
+    try:
+        resume_episode, completions = mc_agent.load_checkpoint(checkpoint_path)
+        resume_episode += 1 # Start with the next episode
+        print(f"Loaded checkpoint. Starting at episode: {resume_episode}")
+    except FileNotFoundError:
+        print("No checkpoint found. Starting training.")
 
-    for episode in tqdm(range(episodes), desc="Episodes", position=0):
+
+    for episode in tqdm(range(resume_episode, episodes), desc="Episodes", position=0):
         print("reset " + str(episode))
 
         # Initial observation and creation ExperienceBuffer
@@ -249,6 +296,10 @@ if __name__ == '__main__':
         writer.add_scalar('Steps', steps, episode)
         writer.add_scalar('Average loss', mc_agent.episode_loss	/ steps * 2 , episode) # *2 due to two times training per step
         writer.add_scalar('Completions', completions, episode)
+
+        # Create checkpoint
+        if episode % checkpoint_interval == 0:
+            mc_agent.create_checkpoint(checkpoint_path, episode, completions)
 
     env.close()
     writer.close()
