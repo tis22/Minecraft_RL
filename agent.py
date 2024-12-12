@@ -38,22 +38,34 @@ class ReplayMemory:
 
 
 class Agent:
-    def __init__(self, replay_size, batch_size, action_dim):
+    def __init__(self, 
+                 replay_size=100000, 
+                 batch_size=32, 
+                 action_dim=4, 
+                 gamma=0.95, 
+                 learning_rate=0.0001, 
+                 epsilon=1.0, 
+                 epsilon_end=0.1, 
+                 epsilon_decay=0.999977, 
+                 target_network_update_frequency=1000, 
+                 device=None, 
+                 min_memories=1000):
+
         self.replay_buffer = ReplayMemory(replay_size)
         self.batch_size = batch_size
-        self.gamma = 0.95
-        self.learningRate = 0.0001
-        self.epsilon = 1.0
-        self.epsilon_end = 0.1
-        self.epsilon_decay = 0.999977 # Calculated, depends on amount of episodes (100.000)
-        self.target_network_update_frequency = 1000
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu") # Select CUDA or CPU
+        self.action_dim = action_dim
+        self.gamma = gamma
+        self.learningRate = learning_rate
+        self.epsilon = epsilon
+        self.epsilon_end = epsilon_end
+        self.epsilon_decay = epsilon_decay # Calculated, depends on amount of episodes (100.000)
+        self.target_network_update_frequency = target_network_update_frequency
+        self.device = torch.device(device if device else ("cuda" if torch.cuda.is_available() else "cpu")) # Select CUDA or CPU
+        self.min_memories = min_memories
         self.q_network = self.create_model().to(self.device)
         self.target_network = self.create_model().to(self.device)
         self.optimizer = optim.Adam(self.q_network.parameters(), lr=self.learningRate)
         self.episode_loss = 0
-        self.action_dim = action_dim
-        self.min_memories = 1000
 
     def create_model(self):
         model = nn.Sequential(
