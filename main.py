@@ -16,21 +16,10 @@ from datetime import datetime
 from agent import ExperienceBuffer, ReplayMemory, Agent
 
 def train():
-    pass
-
-def evaluate():
-    if os.path.isfile(checkpoint_path):
-        mc_agent.q_network = torch.load(checkpoint_path)
-    else:
-        print(f"Model does not exist. Downloading from Google Drive.")
-        mc_agent.download_model(checkpoint_path)
-
-if __name__ == '__main__':
     # Create folders if not exists
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     log_dir = f'runs/training_{timestamp}'
     image_dir = f'images/training_{timestamp}'
-    checkpoint_dir = 'checkpoints'
 
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
@@ -38,56 +27,8 @@ if __name__ == '__main__':
     if not os.path.exists(image_dir):
         os.makedirs(image_dir)
 
-    if not os.path.exists(checkpoint_dir):
-        os.makedirs(checkpoint_dir)
-    checkpoint_path = os.path.join(checkpoint_dir, 'checkpoint.pth')
-
     # For TensorBoard
     writer = SummaryWriter(log_dir) 
-
-
-    trace_length = 4 # Images for experience buffer
-    replay_size = 100000 # Memory amount (number of memories (steps, each: current 4 frames & latest 3 + new frame)) for replay buffer (needs to be adjusted to fit RAM-size)
-    batch_size = 32 # Amount of memories to be used per training-step
-    saveimagesteps = 0 # 0 = no images will be saved, e.g. 2 = every 2 steps an image will be saved
-    resume_episode = 0
-    completions = 0
-    checkpoint_interval = 100
-    permanent_checkpoint_interval = 10000
-
-    mission = 'missions/mobchase_single_agent.xml'
-    port = 9000
-    server = '127.0.0.1'
-    port2 = None
-    server2 = None
-    episodes = 100000
-    episode = 0
-    role = 0
-    episodemaxsteps = 200 # Change according to map later
-    saveimagesteps = 0
-    resync = 0
-    experimentUniqueId = 'test1'
-
-    if server2 is None:
-        server2 = server
-
-    xml = Path(mission).read_text()
-    env = malmoenv.make()
-
-    env.init(xml, port,
-             server=server,
-             server2=server2, port2=port2,
-             role=role,
-             exp_uid=experimentUniqueId,
-             episode=episode, resync=resync)
-    
-    state_dim = env.observation_space.shape[0]
-    action_dim = env.action_space.n # Number of actions the agent can perform
-    # print("state_dim / height", state_dim)
-    # print("action_dim / number actions", action_dim)
-
-    # Agent creation
-    mc_agent = Agent(replay_size, batch_size, action_dim)
 
     # Load checkpoint if exists
     try:
@@ -97,7 +38,7 @@ if __name__ == '__main__':
     except FileNotFoundError:
         print("No checkpoint found. Starting training.")
 
-
+    # Main training loop
     for episode in tqdm(range(resume_episode, episodes), desc="Episodes", position=0):
         print("reset " + str(episode))
 
@@ -174,6 +115,122 @@ if __name__ == '__main__':
         if episode % permanent_checkpoint_interval == 0:
             permanent_checkpoint_path = os.path.join(checkpoint_dir, f'checkpoint_ep{episode}.pth')
             mc_agent.create_checkpoint(permanent_checkpoint_path, episode, completions)
-
-    env.close()
+            
     writer.close()
+    env.close()
+
+
+def evaluate():
+    if os.path.isfile(checkpoint_path):
+        mc_agent.q_network = torch.load(checkpoint_path)
+    else:
+        print(f"Model does not exist. Downloading from Google Drive.")
+        mc_agent.download_model(checkpoint_path)
+
+    # Load checkpoint if exists
+    try:
+        mc_agent.load_checkpoint(checkpoint_path)
+        print(f"Loaded model.")
+    except Exception as e:
+        print(f"Error loading the model: {e}")
+        return
+    
+    try:
+        # Main evaluate loop
+        while True:
+            # Initial observation and creation ExperienceBuffer
+            obs = env.reset()
+            experience_buffer = ExperienceBuffer(obs) # Will be recreated every episode
+            steps = 0
+            done = False
+            
+            # One episode
+            while not done and (episodemaxsteps <= 0 or steps < episodemaxsteps):
+                steps += 1
+
+                state = experience_buffer.get_stacked_frames()
+
+                # Select and perform action (random or via model)
+                action = mc_agent.select_action(state)
+                next_obs, reward, done, info = env.step(action)
+
+                # Update the observation: add the next_obs to the frame stack 
+                experience_buffer.add_frame(next_obs)
+
+                print(f"Step {steps}: Action={action}, Reward={reward}, Done={done}")
+
+                time.sleep(0.1)
+    
+    except KeyboardInterrupt:
+        print("Evaluation stopped by user.")
+    finally:
+        env.close()
+
+
+if __name__ == '__main__':
+
+    checkpoint_dir = 'checkpoints'
+    trace_length = 4 # Images for experience buffer
+
+    # Training parameters
+    episodes = 100000
+    episodemaxsteps = 200 # Change according to map later
+    replay_size = 100000 # Memory amount (number of memories (steps, each: current 4 frames & latest 3 + new frame)) for replay buffer (needs to be adjusted to fit RAM-size)
+    batch_size = 32 # Amount of memories to be used per training-step
+    saveimagesteps = 0 # Training: 0 = no images will be saved, e.g. 2 = every 2 steps an image will be saved
+    resume_episode = 0
+    completions = 0
+    checkpoint_interval = 100
+    permanent_checkpoint_interval = 10000
+
+    if not os.path.exists(checkpoint_dir):
+        os.makedirs(checkpoint_dir)
+    checkpoint_path = os.path.join(checkpoint_dir, 'checkpoint.pth')
+
+    # Check what the user want to do
+    parser = argparse.ArgumentParser(description="Train or evaluate the Minecraft agent")
+    parser.add_argument('--train', action='store_true', help='Train the Minecraft agent')
+    parser.add_argument('--eval', action='store_true', help='Evaluate the Minecraft agent')
+    args = parser.parse_args()
+
+    mission = 'missions/mobchase_single_agent.xml'
+    port = 9000
+    server = '127.0.0.1'
+    port2 = None
+    server2 = None
+    episode = 0
+    role = 0
+    resync = 0
+    experimentUniqueId = 'MinecraftMaze'
+
+    if server2 is None:
+        server2 = server
+    
+    # Multi-Agent setup
+    # if args.eval:
+    #    port2 = 9001
+
+    xml = Path(mission).read_text()
+    env = malmoenv.make()
+
+    env.init(xml, port,
+             server=server,
+             server2=server2, port2=port2,
+             role=role,
+             exp_uid=experimentUniqueId,
+             episode=episode, resync=resync)
+    
+    action_dim = env.action_space.n # Number of actions the agent can perform
+
+    # Agent creation
+    mc_agent = Agent(replay_size, batch_size, action_dim)
+
+    try:
+        if args.train:
+            train()
+        elif args.eval:
+            evaluate()
+        else:
+            print("Choose between --train or --eval")
+    except KeyboardInterrupt:
+        print("\nAborted by user.")
