@@ -14,6 +14,9 @@ from torch.utils.tensorboard import SummaryWriter
 import os
 from datetime import datetime
 from agent import ExperienceBuffer, ReplayMemory, Agent
+import subprocess
+import gdown
+import zipfile
 
 def train():
     # Create folders if not exists
@@ -29,6 +32,8 @@ def train():
 
     # For TensorBoard
     writer = SummaryWriter(log_dir) 
+    if args.start_tensorboard:
+        start_tensorboard(log_dir)
 
     # Load checkpoint if exists
     try:
@@ -166,6 +171,50 @@ def evaluate():
     finally:
         env.close()
 
+def start_tensorboard(log_dir=None):
+
+    if not os.path.exists('runs'):
+        os.makedirs('runs')
+    
+    if log_dir is None:
+        dirs = [d for d in os.listdir('runs') if d.startswith('training_')]
+
+        if not dirs:
+            print("No log directories found.")
+            log_url = "XXX"
+
+            try:
+                print("Downloading logs from Google Drive.")
+                output_path = os.path.join('runs', 'logs.zip')
+                gdown.download(log_url, output_path, fuzzy=True, use_cookies=False, quiet=False)
+                print("Logs downloaded successfully.")
+
+                # Unzip
+                with zipfile.ZipFile(output_path, 'r') as zip_ref:
+                    # Use the name of the folder
+                    extracted_folder = zip_ref.namelist()[0]
+                    extraction_path = os.path.join('runs', extracted_folder)
+                    zip_ref.extractall(extraction_path)
+                    print(f"Logs extracted to {extraction_path}.")
+                
+                # Remove ZIP
+                os.remove(output_path)
+
+                log_dir = extraction_path
+
+            except Exception as e:
+                print(f"Failed to download logs: {e}")
+                return
+            
+        else:
+            dirs.sort(reverse=True) # New ones first
+            log_dir = os.path.join('runs', dirs[0])
+
+    if log_dir:
+        subprocess.Popen(['tensorboard', '--logdir', log_dir, '--port', '6006'])
+        print(f"TensorBoard is running on http://localhost:6006 with logs from {log_dir}")
+    else:
+        print("No log directory found or specified.")
 
 if __name__ == '__main__':
 
@@ -191,6 +240,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Train or evaluate the Minecraft agent")
     parser.add_argument('--train', action='store_true', help='Train the Minecraft agent')
     parser.add_argument('--eval', action='store_true', help='Evaluate the Minecraft agent')
+    parser.add_argument('--tensorboard', action='store_true', help='Start TensorBoard during training')
+    parser.add_argument('--tensorboard-only', action='store_true', help='Only start TensorBoard')
+    parser.add_argument('--logdir', type=str, default='runs', help='Directory for TensorBoard logs')
     args = parser.parse_args()
 
     mission = 'missions/mobchase_single_agent.xml'
@@ -226,7 +278,9 @@ if __name__ == '__main__':
     mc_agent = Agent(replay_size, batch_size, action_dim)
 
     try:
-        if args.train:
+        if args.tensorboard_only:
+            start_tensorboard(args.logdir)
+        elif args.train:
             train()
         elif args.eval:
             evaluate()
