@@ -5,20 +5,33 @@ import time
 from tqdm import tqdm
 from PIL import Image
 import torch
-import torch.nn as nn
-import torch.optim as optim
 import numpy as np
-from collections import deque
-import random
 from torch.utils.tensorboard import SummaryWriter
 import os
 from datetime import datetime
-from agent import ExperienceBuffer, ReplayMemory, Agent
+from agent import ExperienceBuffer, Agent
 import subprocess
 import gdown
 import zipfile
+from lxml import etree
+from threading import Thread, Event
 
 def train():
+    xml = Path(mission).read_text()
+    env = malmoenv.make()
+
+    env.init(xml, port,
+             server=server,
+             server2=server2, port2=port2,
+             role=role,
+             exp_uid=experimentUniqueId,
+             episode=episode, resync=resync)
+    
+    action_dim = env.action_space.n # Number of actions the agent can perform
+
+    # Agent creation
+    mc_agent = Agent(replay_size, batch_size, action_dim)
+
     # Create folders if not exists
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     log_dir = f'runs/training_{timestamp}'
@@ -126,6 +139,9 @@ def train():
 
 
 def evaluate():
+    # Agent creation
+    mc_agent = Agent(replay_size, batch_size)
+
     if os.path.isfile(checkpoint_path):
         mc_agent.q_network = torch.load(checkpoint_path)
     else:
@@ -140,19 +156,51 @@ def evaluate():
         print(f"Error loading the model: {e}")
         return
     
-    try:
-        # Main evaluate loop
-        while True:
-            # Initial observation and creation ExperienceBuffer
-            obs = env.reset()
-            experience_buffer = ExperienceBuffer(obs) # Will be recreated every episode
-            steps = 0
-            done = False
-            
-            # One episode
-            while not done and (episodemaxsteps <= 0 or steps < episodemaxsteps):
-                steps += 1
+    xml = Path(mission_eval).read_text()
+    mission = etree.fromstring(xml)
+    number_of_agents = len(mission.findall('{http://ProjectMalmo.microsoft.com}AgentSection'))
+        
+    agent_done_event = Event()
+    global_stop_event = Event()
 
+    stop_thread = Thread(target=wait_for_stop, args=(global_stop_event,))
+    stop_thread.start()
+    threads = [Thread(target=run_evaluate, args=(i, global_stop_event, agent_done_event, xml, mc_agent)) for i in range(number_of_agents)]
+    
+    [t.start() for t in threads]
+    [t.join() for t in threads]
+
+    stop_thread.join()
+
+
+def run_evaluate(role, global_stop_event, agent_done_event, xml, mc_agent):
+    env = malmoenv.make()
+    env.init(xml, port,
+             server=server,
+             server2=server2, port2=port + role,
+             role=role,
+             exp_uid=experimentUniqueId,
+             episode=episode, resync=resync)
+    
+    # Set actual action dimension
+    if role == 0:
+        mc_agent.action_dim = env.action_space.n
+
+    # Main evaluate loop
+    while not global_stop_event.is_set():
+        # Initial observation and creation ExperienceBuffer
+        obs = env.reset()
+        if role == 0:
+            experience_buffer = ExperienceBuffer(obs) # Will be recreated every episode
+        steps = 0
+        done = False
+        total_reward = 0
+        
+        # One episode
+        while not done and not global_stop_event.is_set() and (episodemaxsteps <= 0 or steps < episodemaxsteps):
+            steps += 1
+
+            if role == 0: # Agent
                 state = experience_buffer.get_stacked_frames()
 
                 # Select and perform action (random or via model)
@@ -162,14 +210,33 @@ def evaluate():
                 # Update the observation: add the next_obs to the frame stack 
                 experience_buffer.add_frame(next_obs)
 
-                print(f"Step {steps}: Action={action}, Reward={reward}, Done={done}")
+                total_reward += reward
+                log(f"Step {steps}: Action={action}, Reward={reward}, Total reward={total_reward}, Done={done}")
+            
+            elif role == 1:  # Spectator-Agent
+                if agent_done_event.is_set():
+                    log("Spectator stopping because agent_done_event is set.")
+                    break
+                action = 0
+                next_obs, reward, done, info = env.step(action)
 
-                time.sleep(0.1)
-    
-    except KeyboardInterrupt:
-        print("Evaluation stopped by user.")
-    finally:
+            if done and role == 0:
+                agent_done_event.set()
+                print("Agent is done. Event set.")
+
+            time.sleep(0.9)
+
+        if role == 0:
+            agent_done_event.clear()
+
         env.close()
+
+def wait_for_stop(global_stop_event):
+    input("Press Enter to stop...\n")
+    global_stop_event.set()
+
+def log(message):
+    print(f'[{role}] {message}')
 
 def start_tensorboard(log_dir=None):
 
@@ -246,6 +313,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     mission = 'missions/mobchase_single_agent.xml'
+    mission_eval = 'missions/mobchase_two_agents.xml'
     port = 9000
     server = '127.0.0.1'
     port2 = None
@@ -258,25 +326,6 @@ if __name__ == '__main__':
     if server2 is None:
         server2 = server
     
-    # Multi-Agent setup
-    # if args.eval:
-    #    port2 = 9001
-
-    xml = Path(mission).read_text()
-    env = malmoenv.make()
-
-    env.init(xml, port,
-             server=server,
-             server2=server2, port2=port2,
-             role=role,
-             exp_uid=experimentUniqueId,
-             episode=episode, resync=resync)
-    
-    action_dim = env.action_space.n # Number of actions the agent can perform
-
-    # Agent creation
-    mc_agent = Agent(replay_size, batch_size, action_dim)
-
     try:
         if args.tensorboard_only:
             start_tensorboard(args.logdir)
@@ -285,6 +334,6 @@ if __name__ == '__main__':
         elif args.eval:
             evaluate()
         else:
-            print("Choose between --train or --eval")
+            print("Choose between --train or --eval or --tensorboard-only")
     except KeyboardInterrupt:
         print("\nAborted by user.")
