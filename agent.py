@@ -124,7 +124,7 @@ class Agent:
         if len(self.replay_buffer) % self.target_network_update_frequency: # Update the target network every update_frequency-steps (memories made)
              self.target_network.load_state_dict(self.q_network.state_dict())
 
-    def create_checkpoint(self, filepath, episode, completions):
+    def create_checkpoint(self, filepath, episode, completions, base_name):
         checkpoint = {
             'q_network_state_dict': self.q_network.state_dict(),
             'target_model_state_dict': self.target_network.state_dict(),
@@ -133,7 +133,8 @@ class Agent:
             'replay_size': self.replay_buffer.memories.maxlen,
             'epsilon': self.epsilon,
             'episode': episode,
-            'completions': completions
+            'completions': completions,
+            'base_name': base_name
         }
 
         torch.save(checkpoint, filepath)
@@ -151,8 +152,9 @@ class Agent:
             self.epsilon = checkpoint['epsilon']
             episode = checkpoint['episode']
             completions = checkpoint['completions']
+            base_name = checkpoint['base_name']
 
-            return episode, completions
+            return episode, completions, base_name
         
         else:
             raise FileNotFoundError(f"No checkpoint found at {filepath}")

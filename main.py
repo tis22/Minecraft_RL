@@ -32,10 +32,21 @@ def train():
     # Agent creation
     mc_agent = Agent(replay_size, batch_size, action_dim)
 
-    # Create folders if not exists
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    log_dir = f'runs/training_{timestamp}'
-    image_dir = f'images/training_{timestamp}'
+    # Load checkpoint if exists
+    try:
+        resume_episode, completions, loaded_base_name = mc_agent.load_checkpoint(checkpoint_path)
+        resume_episode += 1 # Start with the next episode
+        base_name = loaded_base_name
+        print(f"Loaded checkpoint. Starting at episode: {resume_episode}")
+    except FileNotFoundError:
+        print("No checkpoint found. Starting training.")
+
+        # Create folders if not exists
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        base_name = f"training_{timestamp}"
+
+    log_dir = f'runs/{base_name}'
+    image_dir = f'images/{base_name}'
 
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
@@ -47,14 +58,6 @@ def train():
     writer = SummaryWriter(log_dir) 
     if args.start_tensorboard:
         start_tensorboard(log_dir)
-
-    # Load checkpoint if exists
-    try:
-        resume_episode, completions = mc_agent.load_checkpoint(checkpoint_path)
-        resume_episode += 1 # Start with the next episode
-        print(f"Loaded checkpoint. Starting at episode: {resume_episode}")
-    except FileNotFoundError:
-        print("No checkpoint found. Starting training.")
 
     # Main training loop
     for episode in tqdm(range(resume_episode, episodes), desc="Episodes", position=0):
@@ -127,12 +130,12 @@ def train():
 
         # Create checkpoint
         if episode % checkpoint_interval == 0:
-            mc_agent.create_checkpoint(checkpoint_path, episode, completions)
+            mc_agent.create_checkpoint(checkpoint_path, episode, completions, base_name)
         
         # Create permanent checkpoints for evaluation
         if episode % permanent_checkpoint_interval == 0:
             permanent_checkpoint_path = os.path.join(checkpoint_dir, f'checkpoint_ep{episode}.pth')
-            mc_agent.create_checkpoint(permanent_checkpoint_path, episode, completions)
+            mc_agent.create_checkpoint(permanent_checkpoint_path, episode, completions, base_name)
             
     writer.close()
     env.close()
@@ -143,18 +146,21 @@ def evaluate():
     mc_agent = Agent(replay_size, batch_size)
 
     if os.path.isfile(checkpoint_path):
-        mc_agent.q_network = torch.load(checkpoint_path)
+        try:
+            mc_agent.load_checkpoint(checkpoint_path)
+            print("Loaded model.")
+        except Exception as e:
+            print(f"Error loading the model: {e}")
+            return
     else:
-        print(f"Model does not exist. Downloading from Google Drive.")
+        print("Model does not exist. Downloading from Google Drive.")
         mc_agent.download_model(checkpoint_path)
-
-    # Load checkpoint if exists
-    try:
-        mc_agent.load_checkpoint(checkpoint_path)
-        print(f"Loaded model.")
-    except Exception as e:
-        print(f"Error loading the model: {e}")
-        return
+        try:
+            mc_agent.load_checkpoint(checkpoint_path)
+            print("Loaded downloaded model.")
+        except Exception as e:
+            print(f"Error loading the downloaded model: {e}")
+            return
     
     xml = Path(mission_eval).read_text()
     mission = etree.fromstring(xml)
