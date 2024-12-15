@@ -34,9 +34,8 @@ def train():
 
     # Load checkpoint if exists
     try:
-        resume_episode, completions, loaded_base_name = mc_agent.load_checkpoint(checkpoint_path)
+        resume_episode, completions, base_name = mc_agent.load_checkpoint(checkpoint_path)
         resume_episode += 1 # Start with the next episode
-        base_name = loaded_base_name
         print(f"Loaded checkpoint. Starting at episode: {resume_episode}")
     except FileNotFoundError:
         print("No checkpoint found. Starting training.")
