@@ -4,7 +4,6 @@ from pathlib import Path
 import time
 from tqdm import tqdm
 from PIL import Image
-import torch
 import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 import os
@@ -15,8 +14,10 @@ import gdown
 import zipfile
 from lxml import etree
 from threading import Thread, Event
+import re
 
 def train():
+    global mission, port, server, server2, port2, role, experimentUniqueId, resume_episode, episode, resync, permanent_checkpoint_interval
     xml = Path(mission).read_text()
     env = malmoenv.make()
 
@@ -27,6 +28,7 @@ def train():
              exp_uid=experimentUniqueId,
              episode=episode, resync=resync)
     
+    h, w, c = env.observation_space.shape
     action_dim = env.action_space.n # Number of actions the agent can perform
 
     # Agent creation
@@ -37,8 +39,22 @@ def train():
         resume_episode, completions, base_name = mc_agent.load_checkpoint(checkpoint_path)
         resume_episode += 1 # Start with the next episode
         print(f"Loaded checkpoint. Starting at episode: {resume_episode}")
+
+        image_dir = f'images/{base_name}'
+        for image_file in os.listdir(image_dir):
+            # Get episode number from filename
+            match = re.match(r'image_(\d+)_\d+\.png', image_file)
+
+            if match:
+                episode_number = int(match.group(1))
+                # Delete images with episodes >= resume_episode
+                if episode_number >= resume_episode:
+                    os.remove(os.path.join(image_dir, image_file))
+
     except FileNotFoundError:
         print("No checkpoint found. Starting training.")
+
+        completions = 0
 
         # Create folders if not exists
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -55,21 +71,25 @@ def train():
 
     # For TensorBoard
     writer = SummaryWriter(log_dir) 
-    if args.start_tensorboard:
+    if args.tensorboard:
         start_tensorboard(log_dir)
 
     # Main training loop
     for episode in tqdm(range(resume_episode, episodes), desc="Episodes", position=0):
-        print("reset " + str(episode))
+        # print("reset " + str(episode))
 
         # Initial observation and creation ExperienceBuffer
         obs = env.reset()
-        experience_buffer = ExperienceBuffer(obs) # Will be recreated every episode
+        experience_buffer = ExperienceBuffer(obs, h, w, c)
 
         episode_reward = 0
         mc_agent.episode_loss = 0
         steps = 0
         done = False
+
+        if saveimagesteps > 0:
+            img = Image.fromarray(obs.reshape(h, w, c))
+            img.save(f'{image_dir}/image_{episode}_{steps}.png')
 
         with tqdm(total=episodemaxsteps if episodemaxsteps > 0 else None, desc="Episode steps", position=1, leave=False) as step_bar:
             while not done and (episodemaxsteps <= 0 or steps < episodemaxsteps):
@@ -80,7 +100,14 @@ def train():
                 # Select and perform action (random or via model)
                 action = mc_agent.select_action(state)
                 next_obs, reward, done, info = env.step(action)
-                
+
+                # Check if next_obs is valid (not empty or invalid)
+                if next_obs is None or next_obs.size == 0:
+                    print(f"Warning: Encountered empty observation at step {steps} during episode {episode}. Skipping this step.")
+                    done = True
+                    break
+
+                mc_agent.steps_made += 1
                 episode_reward += reward
 
                 # print("reward: " + str(reward))
@@ -99,8 +126,7 @@ def train():
                 
                 # Test: Save images
                 if saveimagesteps > 0 and steps % saveimagesteps == 0:
-                    h, w, d = env.observation_space.shape
-                    img = Image.fromarray(obs.reshape(h, w, d))
+                    img = Image.fromarray(next_obs.reshape(h, w, c))
                     img.save(f'{image_dir}/image_{episode}_{steps}.png')
 
                 # Train the network
@@ -109,13 +135,13 @@ def train():
                 # Update tqdm bar
                 step_bar.update(1)
 
-                time.sleep(2) # Turn off for training / decrease
+                # time.sleep(0.5) # Turn off for training / decrease
         
         # Decrease epsilon after each episode
         if mc_agent.epsilon > mc_agent.epsilon_end:
             mc_agent.epsilon *= mc_agent.epsilon_decay
 
-        if done == True:
+        if done == True and reward >= 0.98: # Has to be the reward defined in the XML (current reward for (reaching goal = 1) + (-0.01 per Step))
             completions += 1
             writer.add_scalar('Reward per completion', episode_reward, completions)
         

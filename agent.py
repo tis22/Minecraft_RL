@@ -8,15 +8,20 @@ import os
 import gdown
 
 class ExperienceBuffer:
-    def __init__(self, initial_frame, trace_length=4):
+    def __init__(self, initial_frame, height, width, channels, trace_length=4):
+        self.height = height
+        self.width = width
+        self.channels = channels
         self.trace_length = trace_length
         self.buffer = deque(maxlen=trace_length) # maxlen enables automatic deletion of oldest frame
+        reshaped_obs = initial_frame.reshape((self.height, self.width, self.channels))
         
         for _ in range(self.trace_length): # Append trace_length-times the current frame
-            self.buffer.append(initial_frame)
+            self.buffer.append(reshaped_obs)
     
     def add_frame(self, frame):
-        self.buffer.append(frame)
+        reshaped_obs = frame.reshape((self.height, self.width, self.channels))
+        self.buffer.append(reshaped_obs)
     
     def get_stacked_frames(self):
         stacked_frames = np.concatenate(list(self.buffer), axis=-1)
@@ -66,6 +71,7 @@ class Agent:
         self.target_network = self.create_model().to(self.device)
         self.optimizer = optim.Adam(self.q_network.parameters(), lr=self.learningRate)
         self.episode_loss = 0
+        self.steps_made = 0
 
     def create_model(self):
         model = nn.Sequential(
@@ -75,6 +81,7 @@ class Agent:
             nn.ReLU(),
             nn.Conv2d(64, 64, kernel_size=4, stride=2),
             nn.ReLU(),
+            nn.Flatten(),
             nn.Linear(64 * 8 * 8, 512), # Calculated
             nn.ReLU(),
             nn.Linear(512, self.action_dim)
@@ -83,7 +90,7 @@ class Agent:
         return model
 
     def update_online_network(self):
-        if len(self.replay_buffer) < self.min_memories: # Return if the ReplayMemory doesn't have enough memories yet
+        if len(self.replay_buffer.memories) < self.min_memories: # Return if the ReplayMemory doesn't have enough memories yet
             return
 
         states, actions, rewards, next_states, dones = self.replay_buffer.get_memories(self.batch_size)
@@ -95,9 +102,9 @@ class Agent:
         dones = torch.FloatTensor(dones).to(self.device)
     
         # Computed for all items in the memory-batch
-        q_values = self.q_network(states).gather(1, actions.unsqueeze(1)).squeeze(1) # Predicted Q-Values for current state (online-network)
+        q_values = self.q_network(np.array(states)).gather(1, actions.unsqueeze(1)).squeeze(1) # Predicted Q-Values for current state (online-network)
         next_actions = self.q_network(next_states).argmax(dim=1) # Next actions predicted by online-network
-        next_q_values = self.target_network(next_states).gather(1, next_actions.unsqueeze(1)).squeeze(1) # Q-Values in the next state (target-network)
+        next_q_values = self.target_network(np.array(next_states)).gather(1, next_actions.unsqueeze(1)).squeeze(1) # Q-Values in the next state (target-network)
         q_targets = rewards + self.gamma * next_q_values * (1 - dones) # Estimated future reward from taking action a in state s 
 
         # Actual learning
@@ -121,7 +128,7 @@ class Agent:
         for _ in range(2): # For each step the agent does the network will be trained two times
             self.update_online_network()
         
-        if len(self.replay_buffer) % self.target_network_update_frequency: # Update the target network every update_frequency-steps (memories made)
+        if self.steps_made % self.target_network_update_frequency == 0: # Update the target network every update_frequency-steps (memories made)
              self.target_network.load_state_dict(self.q_network.state_dict())
 
     def create_checkpoint(self, filepath, episode, completions, base_name):
@@ -134,6 +141,7 @@ class Agent:
             'epsilon': self.epsilon,
             'episode': episode,
             'completions': completions,
+            'steps_made': self.steps_made,
             'base_name': base_name
         }
 
@@ -152,6 +160,7 @@ class Agent:
             self.epsilon = checkpoint['epsilon']
             episode = checkpoint['episode']
             completions = checkpoint['completions']
+            self.steps_made = checkpoint['steps_made']
             base_name = checkpoint['base_name']
 
             return episode, completions, base_name
