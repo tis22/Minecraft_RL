@@ -131,12 +131,11 @@ class Agent:
         if self.steps_made % self.target_network_update_frequency == 0: # Update the target network every update_frequency-steps (memories made)
              self.target_network.load_state_dict(self.q_network.state_dict())
 
-    def create_checkpoint(self, filepath, episode, completions, base_name):
-        checkpoint = {
+    def create_checkpoint(self, filepath, episode, completions, base_name, chunk_size=25000):
+        checkpoint_metadata = {
             'q_network_state_dict': self.q_network.state_dict(),
             'target_model_state_dict': self.target_network.state_dict(),
             'optimizer_state_dict': self.optimizer.state_dict(),
-            'replay_buffer': list(self.replay_buffer.memories),
             'replay_size': self.replay_buffer.memories.maxlen,
             'epsilon': self.epsilon,
             'episode': episode,
@@ -145,23 +144,46 @@ class Agent:
             'base_name': base_name
         }
 
-        torch.save(checkpoint, filepath)
+        with open(filepath, 'wb') as f:
+            # Save metadata
+            torch.save(checkpoint_metadata, f)
+
+            # Sava metadata in chunks to use less RAM
+            memories = list(self.replay_buffer.memories)
+            num_chunks = len(memories) // chunk_size + (1 if len(memories) % chunk_size != 0 else 0)
+
+            # Save all chunks in the same file
+            for i in range(num_chunks):
+                chunk = memories[i * chunk_size:(i + 1) * chunk_size]
+                torch.save(chunk, f)
 
     def load_checkpoint(self, filepath):
         if os.path.isfile(filepath):
-            checkpoint = torch.load(filepath)
-            
-            self.q_network.load_state_dict(checkpoint['q_network_state_dict'])
-            self.target_network.load_state_dict(checkpoint['target_model_state_dict'])
-            self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-            replay_size = checkpoint['replay_size']
+            with open(filepath, 'rb') as f:
+                # Load metadata first
+                checkpoint_metadata = torch.load(f)
+                replay_size = checkpoint_metadata['replay_size']
+
+                # Now load the chunks (chunk per chunk)
+                replay_buffer = deque(maxlen=replay_size)
+                try:
+                    while True:
+                        chunk = torch.load(f)
+                        replay_buffer.extend(chunk)
+                except EOFError:
+                    pass
+
+            # Set attributes
+            self.q_network.load_state_dict(checkpoint_metadata['q_network_state_dict'])
+            self.target_network.load_state_dict(checkpoint_metadata['target_model_state_dict'])
+            self.optimizer.load_state_dict(checkpoint_metadata['optimizer_state_dict'])
             self.replay_buffer = ReplayMemory(replay_size)
-            self.replay_buffer.memories = deque(checkpoint['replay_buffer'], maxlen=replay_size)
-            self.epsilon = checkpoint['epsilon']
-            episode = checkpoint['episode']
-            completions = checkpoint['completions']
-            self.steps_made = checkpoint['steps_made']
-            base_name = checkpoint['base_name']
+            self.replay_buffer.memories = replay_buffer
+            self.epsilon = checkpoint_metadata['epsilon']
+            episode = checkpoint_metadata['episode']
+            completions = checkpoint_metadata['completions']
+            self.steps_made = checkpoint_metadata['steps_made']
+            base_name = checkpoint_metadata['base_name']
 
             return episode, completions, base_name
         
