@@ -6,6 +6,7 @@ from collections import deque
 import random
 import os
 import gdown
+import pickle
 
 class ExperienceBuffer:
     def __init__(self, initial_frame, height, width, channels, trace_length=4):
@@ -131,65 +132,59 @@ class Agent:
         if self.steps_made % self.target_network_update_frequency == 0: # Update the target network every update_frequency-steps (memories made)
              self.target_network.load_state_dict(self.q_network.state_dict())
 
-    def create_checkpoint(self, filepath, episode, completions, base_name, chunk_size=25000):
-        checkpoint_metadata = {
-            'q_network_state_dict': self.q_network.state_dict(),
-            'target_model_state_dict': self.target_network.state_dict(),
-            'optimizer_state_dict': self.optimizer.state_dict(),
-            'replay_size': self.replay_buffer.memories.maxlen,
-            'epsilon': self.epsilon,
-            'episode': episode,
-            'completions': completions,
-            'steps_made': self.steps_made,
-            'base_name': base_name
-        }
+    def create_checkpoint(self, checkpoint_path, memories_path, episode, completions, base_name):
+        try:
+            checkpoint_metadata = {
+                'q_network_state_dict': self.q_network.state_dict(),
+                'target_model_state_dict': self.target_network.state_dict(),
+                'optimizer_state_dict': self.optimizer.state_dict(),
+                'replay_size': self.replay_buffer.memories.maxlen,
+                'epsilon': self.epsilon,
+                'episode': episode,
+                'completions': completions,
+                'steps_made': self.steps_made,
+                'base_name': base_name
+            }
 
-        with open(filepath, 'wb') as f:
-            # Save metadata
-            torch.save(checkpoint_metadata, f)
+            torch.save(checkpoint_metadata, checkpoint_path)
+            
+            with open(memories_path, 'wb') as f:
+                pickle.dump(self.replay_buffer.memories, f)
 
-            # Sava metadata in chunks to use less RAM
-            memories = list(self.replay_buffer.memories)
-            num_chunks = len(memories) // chunk_size + (1 if len(memories) % chunk_size != 0 else 0)
+        except Exception as e:
+            print(f"Error saving checkpoint: {e}")
 
-            # Save all chunks in the same file
-            for i in range(num_chunks):
-                chunk = memories[i * chunk_size:(i + 1) * chunk_size]
-                torch.save(chunk, f)
+    def load_checkpoint(self, checkpoint_path, memories_path=None):
+        try:
+            checkpoint_metadata = torch.load(checkpoint_path)
 
-    def load_checkpoint(self, filepath):
-        if os.path.isfile(filepath):
-            with open(filepath, 'rb') as f:
-                # Load metadata first
-                checkpoint_metadata = torch.load(f)
-                replay_size = checkpoint_metadata['replay_size']
-
-                # Now load the chunks (chunk per chunk)
-                replay_buffer = deque(maxlen=replay_size)
-                try:
-                    while True:
-                        chunk = torch.load(f)
-                        replay_buffer.extend(chunk)
-                except EOFError:
-                    pass
-
-            # Set attributes
             self.q_network.load_state_dict(checkpoint_metadata['q_network_state_dict'])
             self.target_network.load_state_dict(checkpoint_metadata['target_model_state_dict'])
             self.optimizer.load_state_dict(checkpoint_metadata['optimizer_state_dict'])
-            self.replay_buffer = ReplayMemory(replay_size)
-            self.replay_buffer.memories = replay_buffer
             self.epsilon = checkpoint_metadata['epsilon']
             episode = checkpoint_metadata['episode']
             completions = checkpoint_metadata['completions']
             self.steps_made = checkpoint_metadata['steps_made']
             base_name = checkpoint_metadata['base_name']
 
+            # Load replay buffer 
+            if memories_path is not None:
+                replay_size = checkpoint_metadata['replay_size']
+
+                if os.path.isfile(memories_path):
+                    with open(memories_path, 'rb') as f:
+                        memories = pickle.load(f)
+                    self.replay_buffer = ReplayMemory(replay_size)
+                    self.replay_buffer.memories = deque(memories, maxlen=replay_size)
+                else:
+                    raise FileNotFoundError(f"Replay-Buffer-Datei nicht gefunden: {memories_path}")
+
             return episode, completions, base_name
-        
-        else:
-            raise FileNotFoundError(f"No checkpoint found at {filepath}")
-        
+
+        except Exception as e:
+            print(f"Error loading checkpoint: {e}")
+            raise
+
     def download_model(self, filepath):
         url = ''
         model_path = gdown.download(url, filepath, fuzzy=True, use_cookies=False, quiet=False)
