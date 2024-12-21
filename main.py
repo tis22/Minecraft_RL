@@ -17,7 +17,7 @@ from threading import Thread, Event
 import re
 
 def train():
-    global mission, port, server, server2, port2, role, experimentUniqueId, resume_episode, episode, resync, permanent_checkpoint_interval
+    global mission, port, server, server2, port2, role, experimentUniqueId, resume_episode, episode, resync, permanent_checkpoint_interval, batch_size, replay_size
     xml = Path(mission).read_text()
     env = malmoenv.make()
 
@@ -36,7 +36,7 @@ def train():
 
     # Load checkpoint if exists
     try:
-        resume_episode, completions, base_name = mc_agent.load_checkpoint(checkpoint_path)
+        resume_episode, completions, base_name = mc_agent.load_checkpoint(checkpoint_path, memories_path)
         resume_episode += 1 # Start with the next episode
         print(f"Loaded checkpoint. Starting at episode: {resume_episode}")
 
@@ -155,12 +155,13 @@ def train():
 
         # Create checkpoint
         if episode % checkpoint_interval == 0:
-            mc_agent.create_checkpoint(checkpoint_path, episode, completions, base_name)
+            mc_agent.create_checkpoint(checkpoint_path, memories_path, episode, completions, base_name)
         
         # Create permanent checkpoints for evaluation
-        if episode % permanent_checkpoint_interval == 0:
-            permanent_checkpoint_path = os.path.join(checkpoint_dir, f'checkpoint_ep{episode}.pth')
-            mc_agent.create_checkpoint(permanent_checkpoint_path, episode, completions, base_name)
+        # if episode % permanent_checkpoint_interval == 0:
+        #     permanent_checkpoint_path = os.path.join(checkpoint_dir, f'checkpoint_ep{episode}.pth')
+        #     permanent_memories_path = os.path.join(checkpoint_dir, f'memories_ep{episode}.pkl')
+        #     mc_agent.create_checkpoint(permanent_checkpoint_path, permanent_memories_path, episode, completions, base_name)
             
     writer.close()
     env.close()
@@ -333,6 +334,7 @@ if __name__ == '__main__':
     if not os.path.exists(checkpoint_dir):
         os.makedirs(checkpoint_dir)
     checkpoint_path = os.path.join(checkpoint_dir, 'checkpoint.pth')
+    memories_path = os.path.join(checkpoint_dir, 'memories.pkl')
 
     # Check what the user want to do
     parser = argparse.ArgumentParser(description="Train or evaluate the Minecraft agent")
