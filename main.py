@@ -103,7 +103,7 @@ def train():
 
                 # Check if next_obs is valid (not empty or invalid)
                 if next_obs is None or next_obs.size == 0:
-                    print(f"Warning: Encountered empty observation at step {steps} during episode {episode}. Skipping this step.")
+                    # print(f"Warning: Encountered empty observation at step {steps} during episode {episode}. Skipping this step.")
                     done = True
                     break
 

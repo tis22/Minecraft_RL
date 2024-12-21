@@ -96,16 +96,16 @@ class Agent:
 
         states, actions, rewards, next_states, dones = self.replay_buffer.get_memories(self.batch_size)
         
-        states = torch.FloatTensor(states).to(self.device) # Adds batch dim (batch_size, channels, height, width)
+        states = torch.FloatTensor(np.array(states)).to(self.device) # Adds batch dim (batch_size, channels, height, width)
         actions = torch.LongTensor(actions).to(self.device)
         rewards = torch.FloatTensor(rewards).to(self.device)
-        next_states = torch.FloatTensor(next_states).to(self.device) # Adds batch dim (batch_size, channels, height, width)
+        next_states = torch.FloatTensor(np.array(next_states)).to(self.device) # Adds batch dim (batch_size, channels, height, width)
         dones = torch.FloatTensor(dones).to(self.device)
     
         # Computed for all items in the memory-batch
-        q_values = self.q_network(np.array(states)).gather(1, actions.unsqueeze(1)).squeeze(1) # Predicted Q-Values for current state (online-network)
+        q_values = self.q_network(states).gather(1, actions.unsqueeze(1)).squeeze(1) # Predicted Q-Values for current state (online-network)
         next_actions = self.q_network(next_states).argmax(dim=1) # Next actions predicted by online-network
-        next_q_values = self.target_network(np.array(next_states)).gather(1, next_actions.unsqueeze(1)).squeeze(1) # Q-Values in the next state (target-network)
+        next_q_values = self.target_network(next_states).gather(1, next_actions.unsqueeze(1)).squeeze(1) # Q-Values in the next state (target-network)
         q_targets = rewards + self.gamma * next_q_values * (1 - dones) # Estimated future reward from taking action a in state s 
 
         # Actual learning
