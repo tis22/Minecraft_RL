@@ -135,7 +135,7 @@ def train():
                 # Update tqdm bar
                 step_bar.update(1)
 
-                # time.sleep(0.5) # Turn off for training / decrease
+                # time.sleep(.05) # Wait to get server response (may be not necessary because mc_agent.train() takes time)
         
         # Decrease epsilon after each episode
         if mc_agent.epsilon > mc_agent.epsilon_end:
@@ -217,13 +217,14 @@ def run_evaluate(role, global_stop_event, agent_done_event, xml, mc_agent):
     # Set actual action dimension
     if role == 0:
         mc_agent.action_dim = env.action_space.n
+        h, w, c = env.observation_space.shape
 
     # Main evaluate loop
     while not global_stop_event.is_set():
         # Initial observation and creation ExperienceBuffer
         obs = env.reset()
         if role == 0:
-            experience_buffer = ExperienceBuffer(obs) # Will be recreated every episode
+            experience_buffer = ExperienceBuffer(obs, h, w, c) # Will be recreated every episode
         steps = 0
         done = False
         total_reward = 0
@@ -323,12 +324,12 @@ if __name__ == '__main__':
     # Training parameters
     episodes = 100000
     episodemaxsteps = 200 # Change according to map later
-    replay_size = 100000 # Memory amount (number of memories (steps, each: current 4 frames & latest 3 + new frame)) for replay buffer (needs to be adjusted to fit RAM-size)
-    batch_size = 32 # Amount of memories to be used per training-step
-    saveimagesteps = 0 # Training: 0 = no images will be saved, e.g. 2 = every 2 steps an image will be saved
+    replay_size = 200000 # Memory amount (number of memories (steps, each: current 4 frames & latest 3 + new frame)) for replay buffer (needs to be adjusted to fit RAM-size)
+    batch_size = 256 # Amount of memories to be used per training-step
+    saveimagesteps = 1 # Training: 0 = no images will be saved, e.g. 2 = every 2 steps an image will be saved
     resume_episode = 0
     completions = 0
-    checkpoint_interval = 100
+    checkpoint_interval = 1000
     permanent_checkpoint_interval = 10000
 
     if not os.path.exists(checkpoint_dir):
@@ -345,8 +346,8 @@ if __name__ == '__main__':
     parser.add_argument('--logdir', type=str, default='runs', help='Directory for TensorBoard logs')
     args = parser.parse_args()
 
-    mission = 'missions/mobchase_single_agent.xml'
-    mission_eval = 'missions/mobchase_two_agents.xml'
+    mission = 'maze_mission_single_agent.xml'
+    mission_eval = 'maze_mission_multi_agent.xml'
     port = 9000
     server = '127.0.0.1'
     port2 = None

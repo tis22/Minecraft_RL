@@ -45,15 +45,15 @@ class ReplayMemory:
 
 class Agent:
     def __init__(self, 
-                 replay_size=100000, 
-                 batch_size=32, 
+                 replay_size=200000, 
+                 batch_size=256, 
                  action_dim=4, 
-                 gamma=0.95, 
+                 gamma=0.97, 
                  learning_rate=0.0001, 
                  epsilon=1.0, 
                  epsilon_end=0.1, 
-                 epsilon_decay=0.999977, 
-                 target_network_update_frequency=1000, 
+                 epsilon_decay=0.999967, # 0.1 will be reached at 70000 episodes
+                 target_network_update_frequency=5000, 
                  device=None, 
                  min_memories=1000):
 
