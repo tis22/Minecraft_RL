@@ -28,8 +28,8 @@
         <DrawCuboid x1="-2"  y1="51" z1="-2"  x2="10" y2="51" z2="31" type="glowstone" />
         
         <DrawBlock   x="2"   y="45"  z="2"  type="grass" />                           <!-- the starting marker -->
-        <DrawBlock   x="6"   y="45"  z="26" type="diamond_block" />                   <!-- the destination marker -->
-        <DrawItem    x="6"   y="46"  z="26" type="diamond" />                         <!-- another destination marker -->
+        <DrawBlock   x="6"   y="45"  z="25" type="diamond_block" />                   <!-- the destination marker -->
+        <DrawItem    x="6"   y="46"  z="25" type="diamond" />                         <!-- another destination marker -->
         
         <DrawCuboid x1="1"  y1="45" z1="13"  x2="2" y2="48" z2="14" type="cobblestone" />
         <DrawCuboid x1="5"  y1="45" z1="2"  x2="6" y2="48" z2="4" type="cobblestone" />
@@ -40,16 +40,22 @@
         <DrawCuboid x1="0"  y1="45" z1="22"  x2="2" y2="48" z2="22" type="cobblestone" />
         <DrawCuboid x1="2"  y1="45" z1="23"  x2="3" y2="48" z2="23" type="cobblestone" />
 
-        <DrawLine x1="4"  y1="45" z1="1"  x2="4" y2="45" z2="4" type="gravel" />
-        <DrawLine x1="5"  y1="45" z1="5"  x2="5" y2="45" z2="6" type="gravel" />
-        <DrawLine x1="6"  y1="45" z1="5"  x2="6" y2="45" z2="8" type="gravel" />
-        <DrawLine x1="7"  y1="45" z1="2"  x2="7" y2="45" z2="7" type="gravel" />
-        <DrawLine x1="8"  y1="45" z1="3"  x2="8" y2="45" z2="7" type="gravel" />
+        <DrawLine x1="4"  y1="45" z1="0"  x2="4" y2="45" z2="4" type="bedrock" />
+        <DrawLine x1="5"  y1="45" z1="5"  x2="5" y2="45" z2="6" type="bedrock" />
+        <DrawLine x1="6"  y1="45" z1="5"  x2="6" y2="45" z2="8" type="bedrock" />
+        <DrawLine x1="7"  y1="45" z1="2"  x2="7" y2="45" z2="7" type="bedrock" />
+        <DrawLine x1="8"  y1="45" z1="3"  x2="8" y2="45" z2="7" type="bedrock" />
 
-        <DrawLine x1="1"  y1="45" z1="20"  x2="2" y2="45" z2="20" type="sandstone" />
-        <DrawLine x1="0"  y1="45" z1="21"  x2="3" y2="45" z2="21" type="sandstone" />
+        <DrawLine x1="0"  y1="45" z1="23"  x2="1" y2="45" z2="23" type="bedrock" />
+        <DrawBlock   x="0"   y="45"  z="24" type="bedrock" />
+
+        <DrawBlock x="2"  y="45" z="20" type="sandstone" />
+        <DrawLine x1="1"  y1="45" z1="21"  x2="3" y2="45" z2="21" type="sandstone" />
         <DrawLine x1="3"  y1="45" z1="22"  x2="4" y2="45" z2="22" type="sandstone" />
-        <DrawBlock   x="4"   y="45"  z="23" type="sandstone" />
+
+        <DrawLine x1="6"  y1="45" z1="12"  x2="6" y2="45" z2="14" type="sandstone" />
+        <DrawBlock   x="7"   y="45"  z="13" type="sandstone" />
+        <DrawBlock   x="5"   y="45"  z="14" type="sandstone" />
 
         <DrawLine x1="5"  y1="45" z1="0"  x2="8" y2="45" z2="0" type="lava" />
         <DrawLine x1="5"  y1="45" z1="1"  x2="8" y2="45" z2="1" type="lava" />
@@ -100,7 +106,7 @@
       </RewardForMissionEnd>
       <RewardForTouchingBlockType>
         <Block reward="0.1" type="sandstone"/>
-        <Block reward="0.2" type="gravel"/>
+        <Block reward="-0.2" type="bedrock"/>
       </RewardForTouchingBlockType>
       <AgentQuitFromTouchingBlockType>
           <Block type="lava" description="drowned_in_lava"/>

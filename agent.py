@@ -46,7 +46,7 @@ class ReplayMemory:
 class Agent:
     def __init__(self, 
                  replay_size=200000, 
-                 batch_size=256, 
+                 batch_size=128, 
                  action_dim=4, 
                  gamma=0.97, 
                  learning_rate=0.0001, 

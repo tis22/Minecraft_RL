@@ -86,6 +86,7 @@ def train():
         mc_agent.episode_loss = 0
         steps = 0
         done = False
+        current_orientation = 0
 
         if saveimagesteps > 0:
             img = Image.fromarray(obs.reshape(h, w, c))
@@ -100,6 +101,15 @@ def train():
                 # Select and perform action (random or via model)
                 action = mc_agent.select_action(state)
                 next_obs, reward, done, info = env.step(action)
+
+                if action == 2:  # Rotate right (90°)
+                    current_orientation = (current_orientation + 1) % 4
+                elif action == 3:  # Rotate left (90°)
+                    current_orientation = (current_orientation - 1) % 4
+
+                # Additional reward for moving forward (northwards)
+                if action == 0 and current_orientation == 0:
+                    reward += 0.05
 
                 # Check if next_obs is valid (not empty or invalid)
                 if next_obs is None or next_obs.size == 0:
@@ -325,7 +335,7 @@ if __name__ == '__main__':
     episodes = 100000
     episodemaxsteps = 200 # Change according to map later
     replay_size = 200000 # Memory amount (number of memories (steps, each: current 4 frames & latest 3 + new frame)) for replay buffer (needs to be adjusted to fit RAM-size)
-    batch_size = 256 # Amount of memories to be used per training-step
+    batch_size = 128 # Amount of memories to be used per training-step
     saveimagesteps = 1 # Training: 0 = no images will be saved, e.g. 2 = every 2 steps an image will be saved
     resume_episode = 0
     completions = 0
