@@ -109,7 +109,7 @@ def train():
 
                 # Additional reward for moving forward (northwards)
                 if action == 0 and current_orientation == 0:
-                    reward += 0.05
+                    reward += 0.15
 
                 # Check if next_obs is valid (not empty or invalid)
                 if next_obs is None or next_obs.size == 0:
@@ -334,7 +334,7 @@ if __name__ == '__main__':
     # Training parameters
     episodes = 100000
     episodemaxsteps = 200 # Change according to map later
-    replay_size = 200000 # Memory amount (number of memories (steps, each: current 4 frames & latest 3 + new frame)) for replay buffer (needs to be adjusted to fit RAM-size)
+    replay_size = 150000 # Memory amount (number of memories (steps, each: current 4 frames & latest 3 + new frame)) for replay buffer (needs to be adjusted to fit RAM-size)
     batch_size = 128 # Amount of memories to be used per training-step
     saveimagesteps = 1 # Training: 0 = no images will be saved, e.g. 2 = every 2 steps an image will be saved
     resume_episode = 0
