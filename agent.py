@@ -178,7 +178,7 @@ class Agent:
                     self.replay_buffer = ReplayMemory(replay_size)
                     self.replay_buffer.memories = deque(memories, maxlen=replay_size)
                 else:
-                    raise FileNotFoundError(f"Replay-Buffer-Datei nicht gefunden: {memories_path}")
+                    raise FileNotFoundError(f"Replay buffer file not found: {memories_path}")
 
             if 'memories' in locals():
                 del memories
