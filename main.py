@@ -239,6 +239,7 @@ def run_evaluate(role, global_stop_event, agent_done_event, xml, mc_agent):
         done = False
         total_reward = 0
         
+        time.sleep(1)
         # One episode
         while not done and not global_stop_event.is_set() and (episodemaxsteps <= 0 or steps < episodemaxsteps):
             steps += 1
@@ -263,16 +264,18 @@ def run_evaluate(role, global_stop_event, agent_done_event, xml, mc_agent):
                 action = 0
                 next_obs, reward, done, info = env.step(action)
 
-            if done and role == 0:
+            if steps >= episodemaxsteps and not done:
+                print("Agent has reached max steps.")
+            elif done and role == 0:
                 agent_done_event.set()
-                print("Agent is done. Event set.")
+                print("Agent is done.")
 
-            time.sleep(0.9)
+            time.sleep(1)
 
         if role == 0:
             agent_done_event.clear()
 
-        env.close()
+    env.close()
 
 def wait_for_stop(global_stop_event):
     input("Press Enter to stop...\n")
