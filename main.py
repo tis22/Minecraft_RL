@@ -251,6 +251,13 @@ def run_evaluate(role, global_stop_event, agent_done_event, xml, mc_agent):
                 action = mc_agent.select_action(state)
                 next_obs, reward, done, info = env.step(action)
 
+                # Check if next_obs is valid (not empty or invalid)
+                if next_obs is None or next_obs.size == 0:
+                    print(f"Warning: Encountered empty observation at step {steps}. Ending episode early.")
+                    done = True
+                    agent_done_event.set()
+                    break
+                
                 # Update the observation: add the next_obs to the frame stack 
                 experience_buffer.add_frame(next_obs)
 
