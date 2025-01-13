@@ -239,6 +239,7 @@ def run_evaluate(role, global_stop_event, agent_done_event, xml, mc_agent):
         done = False
         total_reward = 0
         
+        time.sleep(1)
         # One episode
         while not done and not global_stop_event.is_set() and (episodemaxsteps <= 0 or steps < episodemaxsteps):
             steps += 1
@@ -250,6 +251,13 @@ def run_evaluate(role, global_stop_event, agent_done_event, xml, mc_agent):
                 action = mc_agent.select_action(state)
                 next_obs, reward, done, info = env.step(action)
 
+                # Check if next_obs is valid (not empty or invalid)
+                if next_obs is None or next_obs.size == 0:
+                    print(f"Warning: Encountered empty observation at step {steps}. Ending episode early.")
+                    done = True
+                    agent_done_event.set()
+                    break
+                
                 # Update the observation: add the next_obs to the frame stack 
                 experience_buffer.add_frame(next_obs)
 
@@ -263,16 +271,18 @@ def run_evaluate(role, global_stop_event, agent_done_event, xml, mc_agent):
                 action = 0
                 next_obs, reward, done, info = env.step(action)
 
-            if done and role == 0:
+            if steps >= episodemaxsteps and not done:
+                print("Agent has reached max steps.")
+            elif done and role == 0:
                 agent_done_event.set()
-                print("Agent is done. Event set.")
+                print("Agent is done.")
 
-            time.sleep(0.9)
+            time.sleep(1)
 
         if role == 0:
             agent_done_event.clear()
 
-        env.close()
+    env.close()
 
 def wait_for_stop(global_stop_event):
     input("Press Enter to stop...\n")

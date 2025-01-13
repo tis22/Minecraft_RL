@@ -157,7 +157,7 @@ class Agent:
 
     def load_checkpoint(self, checkpoint_path, memories_path=None):
         try:
-            checkpoint_metadata = torch.load(checkpoint_path)
+            checkpoint_metadata = torch.load(checkpoint_path, map_location=self.device)
 
             self.q_network.load_state_dict(checkpoint_metadata['q_network_state_dict'])
             self.target_network.load_state_dict(checkpoint_metadata['target_model_state_dict'])
