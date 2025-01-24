@@ -52,8 +52,8 @@ If necessary, uninstall any previous Java versions to ensure everything works as
      
     ```bash
     python -m venv minecraft_rl
-    # On Windows: .\venv\Scripts\activate
-    # On Linux: source venv/bin/activate
+    # On Windows: .\minecraft_rl\Scripts\activate
+    # On Linux: source minecraft_rl/bin/activate
     pip install -r requirements.txt
     ```
 
