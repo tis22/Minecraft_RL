@@ -191,6 +191,5 @@ class Agent:
             raise
 
     def download_model(self, filepath):
-        url = ''
+        url = 'https://drive.google.com/file/d/1srxlOZYg-oNERTyVKHRy0trTDAsoMRWn/view?usp=sharing'
         model_path = gdown.download(url, filepath, fuzzy=True, use_cookies=False, quiet=False)
-        self.q_network = torch.load(filepath)

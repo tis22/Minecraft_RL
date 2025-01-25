@@ -173,7 +173,9 @@ the action it took, the reward it received and the total accumulated reward up t
 
 
 ### Using TensorBoard
-To visualize training progress or analyze a specific model's logs, use TensorBoard.
+To visualize training progress or analyze a specific model's logs, use TensorBoard.  
+
+*Note: If TensorBoard doesn't display the logs completely right after starting, it may take a moment to load all the training steps, especially if the logs are large. During this time, you might need to refresh the browser page a few times within the first minute until the logs appear correctly.*
 
 #### Options for TensorBoard
 1. View the latest/current TensorBoard logs:

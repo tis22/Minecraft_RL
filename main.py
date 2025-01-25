@@ -294,7 +294,7 @@ def start_tensorboard(log_dir=None, download=False):
         os.makedirs('runs')
     
     if download:
-        log_url = "XXX"
+        log_url = "https://drive.google.com/file/d/1BimbzsvLJVmOSMbnMvYY_zb0Uo4YLOKj/view?usp=sharing"
 
         try:
             print("Downloading logs from Google Drive.")
@@ -304,10 +304,9 @@ def start_tensorboard(log_dir=None, download=False):
 
             # Unzip
             with zipfile.ZipFile(output_path, 'r') as zip_ref:
-                # Use the name of the folder
                 extracted_folder = zip_ref.namelist()[0]
                 extraction_path = os.path.join('runs', extracted_folder)
-                zip_ref.extractall(extraction_path)
+                zip_ref.extractall('runs')
                 print(f"Logs extracted to {extraction_path}.")
             
             # Remove ZIP
@@ -363,7 +362,7 @@ if __name__ == '__main__':
     parser.add_argument('--eval', action='store_true', help='Evaluate the Minecraft agent')
     parser.add_argument('--tensorboard', action='store_true', help='Start TensorBoard')
     parser.add_argument('--download', action='store_true', help='Download TensorBoard logs from Google Drive')
-    parser.add_argument('--logdir', type=str, default='runs', help='Directory for TensorBoard logs')
+    parser.add_argument('--logdir', type=str, default=None, help='Directory for TensorBoard logs')
     args = parser.parse_args()
 
     mission = 'maze_mission_single_agent.xml'
