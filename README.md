@@ -16,7 +16,8 @@ The goal of the agent is to find an optimal strategy to navigate through the maz
 3. [Installation](#installation)
 4. [Usage](#usage)
 5. [Model](#model)
-6. [Next steps](#next-steps)
+6. [Extras](#extras)
+7. [Next steps](#next-steps)
 
 ---
 
@@ -200,6 +201,11 @@ DDQN: Convolutional Neural Network with the last 4 RGB frames (12 channels)
 The model approximates Q-values for each possible action based on the current state (current frame & last three frames) that the agent observes and selects actions accordingly.
 The actions the agent can take are: move forward, move backward, turn left and turn right, allowing it to navigate in all directions.
 The agent employs epsilon-greedy exploration and learns from past experiences stored in a replay memory.
+
+---
+
+## Extras
+This project includes two Python scripts designed to efficiently handle large sets of images (potentially hundreds of thousands) and create a video from them.
 
 ---
 
