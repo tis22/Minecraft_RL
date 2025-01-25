@@ -191,8 +191,8 @@ To visualize training progress or analyze a specific model's logs, use TensorBoa
 3. Download TensorBoard logs for the model from Google Drive and view:
    ```bash
    python main.py --tensorboard --download
+   ```
    
-
 ---
 
 ### Model
