@@ -195,7 +195,7 @@ To visualize training progress or analyze a specific model's logs, use TensorBoa
    
 ---
 
-### Model
+## Model
 DDQN: Convolutional Neural Network with the last 4 RGB frames (12 channels)
 ![CNN](https://github.com/user-attachments/assets/cd23ef9c-57c7-49bd-b3c2-35b72c82799c)
 
