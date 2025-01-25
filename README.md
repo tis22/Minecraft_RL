@@ -140,7 +140,7 @@ To stop training, press `Ctrl + C`.
 
 
 ### Evaluating the trained agent
-To evaluate a trained agent, use the `--evaluate` flag.  
+To evaluate a trained agent, use the `--eval` flag.  
 - The program uses the trained model stored on the disk.  
 - If no local model is found, it downloads the model from Google Drive.
 
@@ -163,7 +163,7 @@ To evaluate a trained agent, use the `--evaluate` flag.
    ```bash
    source minecraft_rl/bin/activate
    cd MalmoPlatform/MalmoEnv/
-   python main.py --evaluate
+   python main.py --eval
    ```
 The evaluation mode will continue running until you press `Enter` to stop it.  
 The agent will repeatedly start from scratch to try and reach the goal.  
