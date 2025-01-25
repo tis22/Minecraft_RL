@@ -74,7 +74,6 @@ def train():
 
     # Main training loop
     for episode in tqdm(range(resume_episode, episodes), desc="Episodes", position=0):
-        # print("reset " + str(episode))
 
         # Initial observation and creation ExperienceBuffer
         obs = env.reset()
@@ -126,11 +125,9 @@ def train():
                 
                 # Update the observation: add the next_obs to the frame stack 
                 experience_buffer.add_frame(next_obs)
-                # print("experience_buffer", experience_buffer.get_stacked_frames())
 
                 # Now save the experience to the memory
                 mc_agent.replay_buffer.add_memory((state, action, reward, experience_buffer.get_stacked_frames(), done))
-                # print("memories", mc_agent.replay_buffer.memories)
                 
                 # Test: Save images
                 if saveimagesteps > 0 and steps % saveimagesteps == 0:
@@ -275,7 +272,7 @@ def run_evaluate(role, global_stop_event, agent_done_event, xml, mc_agent):
                 agent_done_event.set()
                 print("Agent is done.")
 
-            time.sleep(1)
+            time.sleep(1) # Decide how fast the agent moves
 
         if role == 0:
             agent_done_event.clear()
@@ -342,7 +339,7 @@ if __name__ == '__main__':
 
     # Training parameters
     episodes = 100000
-    episodemaxsteps = 200 # Change according to map later
+    episodemaxsteps = 200 # Change according to map
     replay_size = 150000 # Memory amount (number of memories (steps, each: current 4 frames & latest 3 + new frame)) for replay buffer (needs to be adjusted to fit RAM-size)
     batch_size = 128 # Amount of memories to be used per training-step
     saveimagesteps = 1 # Training: 0 = no images will be saved, e.g. 2 = every 2 steps an image will be saved
