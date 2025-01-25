@@ -204,6 +204,12 @@ The model approximates Q-values for each possible action based on the current st
 The actions the agent can take are: move forward, move backward, turn left and turn right, allowing it to navigate in all directions.
 The agent employs epsilon-greedy exploration and learns from past experiences stored in a replay memory.
 
+### Pre Trained model  
+
+[Model after 120k Episodes](https://drive.google.com/file/d/1srxlOZYg-oNERTyVKHRy0trTDAsoMRWn/view?usp=sharing)  
+
+[Logs after 120k Episodes](https://drive.google.com/file/d/1BimbzsvLJVmOSMbnMvYY_zb0Uo4YLOKj/view?usp=sharing)  
+
 ---
 
 ## Extras
