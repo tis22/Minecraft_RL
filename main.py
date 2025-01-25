@@ -70,9 +70,7 @@ def train():
         os.makedirs(image_dir)
 
     # For TensorBoard
-    writer = SummaryWriter(log_dir) 
-    if args.tensorboard:
-        start_tensorboard(log_dir)
+    writer = SummaryWriter(log_dir)
 
     # Main training loop
     for episode in tqdm(range(resume_episode, episodes), desc="Episodes", position=0):
@@ -291,50 +289,52 @@ def wait_for_stop(global_stop_event):
 def log(message):
     print(f'[{role}] {message}')
 
-def start_tensorboard(log_dir=None):
-
+def start_tensorboard(log_dir=None, download=False):
     if not os.path.exists('runs'):
         os.makedirs('runs')
     
+    if download:
+        log_url = "XXX"
+
+        try:
+            print("Downloading logs from Google Drive.")
+            output_path = os.path.join('runs', 'logs.zip')
+            gdown.download(log_url, output_path, fuzzy=True, use_cookies=False, quiet=False)
+            print("Logs downloaded successfully.")
+
+            # Unzip
+            with zipfile.ZipFile(output_path, 'r') as zip_ref:
+                # Use the name of the folder
+                extracted_folder = zip_ref.namelist()[0]
+                extraction_path = os.path.join('runs', extracted_folder)
+                zip_ref.extractall(extraction_path)
+                print(f"Logs extracted to {extraction_path}.")
+            
+            # Remove ZIP
+            os.remove(output_path)
+
+            log_dir = extraction_path
+
+        except Exception as e:
+            print(f"Failed to download logs: {e}")
+            return
+        
     if log_dir is None:
         dirs = [d for d in os.listdir('runs') if d.startswith('training_')]
 
         if not dirs:
             print("No log directories found.")
-            log_url = "XXX"
-
-            try:
-                print("Downloading logs from Google Drive.")
-                output_path = os.path.join('runs', 'logs.zip')
-                gdown.download(log_url, output_path, fuzzy=True, use_cookies=False, quiet=False)
-                print("Logs downloaded successfully.")
-
-                # Unzip
-                with zipfile.ZipFile(output_path, 'r') as zip_ref:
-                    # Use the name of the folder
-                    extracted_folder = zip_ref.namelist()[0]
-                    extraction_path = os.path.join('runs', extracted_folder)
-                    zip_ref.extractall(extraction_path)
-                    print(f"Logs extracted to {extraction_path}.")
-                
-                # Remove ZIP
-                os.remove(output_path)
-
-                log_dir = extraction_path
-
-            except Exception as e:
-                print(f"Failed to download logs: {e}")
-                return
-            
+            return
         else:
-            dirs.sort(reverse=True) # New ones first
+            dirs.sort(reverse=True)  # Use the latest training directory
             log_dir = os.path.join('runs', dirs[0])
 
-    if log_dir:
+    # Start TensorBoard
+    try:
         subprocess.Popen(['tensorboard', '--logdir', log_dir, '--port', '6006'])
         print(f"TensorBoard is running on http://localhost:6006 with logs from {log_dir}")
-    else:
-        print("No log directory found or specified.")
+    except Exception as e:
+        print(f"Failed to start TensorBoard: {e}")
 
 if __name__ == '__main__':
 
@@ -358,11 +358,11 @@ if __name__ == '__main__':
     memories_path = os.path.join(checkpoint_dir, 'memories.pkl')
 
     # Check what the user want to do
-    parser = argparse.ArgumentParser(description="Train or evaluate the Minecraft agent")
+    parser = argparse.ArgumentParser(description="Train or evaluate the Minecraft agent and visualize the training progress with TensorBoard.")
     parser.add_argument('--train', action='store_true', help='Train the Minecraft agent')
     parser.add_argument('--eval', action='store_true', help='Evaluate the Minecraft agent')
-    parser.add_argument('--tensorboard', action='store_true', help='Start TensorBoard during training')
-    parser.add_argument('--tensorboard-only', action='store_true', help='Only start TensorBoard')
+    parser.add_argument('--tensorboard', action='store_true', help='Start TensorBoard')
+    parser.add_argument('--download', action='store_true', help='Download TensorBoard logs from Google Drive')
     parser.add_argument('--logdir', type=str, default='runs', help='Directory for TensorBoard logs')
     args = parser.parse_args()
 
@@ -381,13 +381,16 @@ if __name__ == '__main__':
         server2 = server
     
     try:
-        if args.tensorboard_only:
-            start_tensorboard(args.logdir)
+        if args.tensorboard:
+            if args.download:
+                start_tensorboard(args.logdir, download=True)
+            else:
+                start_tensorboard(args.logdir)
         elif args.train:
             train()
         elif args.eval:
             evaluate()
         else:
-            print("Choose between --train or --eval or --tensorboard-only")
+            print("Choose between --train or --eval or --tensorboard")
     except KeyboardInterrupt:
         print("\nAborted by user.")
