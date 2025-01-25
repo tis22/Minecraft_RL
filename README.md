@@ -35,6 +35,7 @@ The goal of the agent is to find an optimal strategy to navigate through the maz
 - Git 2.42.0 or higher
 
 It is essential to have the correct version of Java installed: **Java 8 JDK** ([AdoptOpenJDK](https://adoptopenjdk.net/)).  
+Make sure Java is usable in the terminal by running `java --version`.  
 For Windows systems, make sure to properly set the **Path variable** and for Linux, ensure that **JAVA_HOME** is configured correctly.  
 If necessary, uninstall any previous Java versions to ensure everything works as expected. 
 
