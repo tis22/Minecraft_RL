@@ -9,6 +9,7 @@ import gdown
 import pickle
 import gc
 
+
 class ExperienceBuffer:
     def __init__(self, initial_frame, height, width, channels, trace_length=4):
         """
@@ -31,13 +32,13 @@ class ExperienceBuffer:
         self.channels = channels
         self.trace_length = trace_length
         # maxlen enables automatic deletion of oldest frame
-        self.buffer = deque(maxlen=trace_length) 
+        self.buffer = deque(maxlen=trace_length)
         reshaped_obs = initial_frame.reshape((self.height, self.width, self.channels))
-        
+
         # Append trace_length-times the current frame
-        for _ in range(self.trace_length): 
+        for _ in range(self.trace_length):
             self.buffer.append(reshaped_obs)
-    
+
     def add_frame(self, frame):
         """
         Add a new frame to the experience buffer.
@@ -52,7 +53,7 @@ class ExperienceBuffer:
         """
         reshaped_obs = frame.reshape((self.height, self.width, self.channels))
         self.buffer.append(reshaped_obs)
-    
+
     def get_stacked_frames(self):
         """
         Get the stacked frames from the buffer, combined into a single tensor.
@@ -67,7 +68,7 @@ class ExperienceBuffer:
         """
         stacked_frames = np.concatenate(list(self.buffer), axis=-1)
         stacked_frames = np.transpose(stacked_frames, (2, 0, 1))
-        return stacked_frames # (trace_length * channels, height, width)
+        return stacked_frames  # (trace_length * channels, height, width)
 
 
 class ReplayMemory:
@@ -84,7 +85,7 @@ class ReplayMemory:
             None.
         """
         self.memories = deque(maxlen=replay_size)
-    
+
     def add_memory(self, transition):
         """
         Add a transition (state, action, reward, next_state, done) to the replay memory.
@@ -98,7 +99,7 @@ class ReplayMemory:
             None.
         """
         self.memories.append(transition)
-    
+
     def get_memories(self, batch_size):
         """
         Sample a batch of memories from the replay buffer.
@@ -117,18 +118,20 @@ class ReplayMemory:
 
 
 class Agent:
-    def __init__(self, 
-                 replay_size=150000, 
-                 batch_size=128, 
-                 action_dim=4, 
-                 gamma=0.97, 
-                 learning_rate=0.0001, 
-                 epsilon=1.0, 
-                 epsilon_end=0.1, 
-                 epsilon_decay=0.999954, # 0.1 will be reached at 50000 episodes
-                 target_network_update_frequency=2000, 
-                 device=None, 
-                 min_memories=1000):
+    def __init__(
+        self,
+        replay_size=150000,
+        batch_size=128,
+        action_dim=4,
+        gamma=0.97,
+        learning_rate=0.0001,
+        epsilon=1.0,
+        epsilon_end=0.1,
+        epsilon_decay=0.999954,  # 0.1 will be reached at 50000 episodes
+        target_network_update_frequency=2000,
+        device=None,
+        min_memories=1000,
+    ):
         """
         Initialize the Agent with necessary parameters and networks.
         ---------
@@ -158,10 +161,12 @@ class Agent:
         self.epsilon = epsilon
         self.epsilon_end = epsilon_end
         # Epsilon decay is calculated, depends on amount of episodes (100.000)
-        self.epsilon_decay = epsilon_decay 
+        self.epsilon_decay = epsilon_decay
         self.target_network_update_frequency = target_network_update_frequency
         # Select CUDA or CPU
-        self.device = torch.device(device if device else ("cuda" if torch.cuda.is_available() else "cpu")) 
+        self.device = torch.device(
+            device if device else ("cuda" if torch.cuda.is_available() else "cpu")
+        )
         self.min_memories = min_memories
         self.q_network = self.create_model().to(self.device)
         self.target_network = self.create_model().to(self.device)
@@ -189,11 +194,11 @@ class Agent:
             nn.Conv2d(64, 64, kernel_size=4, stride=2),
             nn.ReLU(),
             nn.Flatten(),
-            nn.Linear(64 * 8 * 8, 512), # Calculated
+            nn.Linear(64 * 8 * 8, 512),  # Calculated
             nn.ReLU(),
-            nn.Linear(512, self.action_dim)
+            nn.Linear(512, self.action_dim),
         )
-        
+
         return model
 
     def update_online_network(self):
@@ -209,39 +214,45 @@ class Agent:
             None.
         """
         # Return if the ReplayMemory doesn't have enough memories yet
-        if len(self.replay_buffer.memories) < self.min_memories: 
+        if len(self.replay_buffer.memories) < self.min_memories:
             return
 
-        states, actions, rewards, next_states, dones = self.replay_buffer.get_memories(self.batch_size)
-        
+        states, actions, rewards, next_states, dones = self.replay_buffer.get_memories(
+            self.batch_size
+        )
+
         # Adds batch dim (batch_size, channels, height, width)
-        states = torch.FloatTensor(np.array(states)).to(self.device) 
+        states = torch.FloatTensor(np.array(states)).to(self.device)
         actions = torch.LongTensor(actions).to(self.device)
         rewards = torch.FloatTensor(rewards).to(self.device)
 
         # Adds batch dim (batch_size, channels, height, width)
-        next_states = torch.FloatTensor(np.array(next_states)).to(self.device) 
+        next_states = torch.FloatTensor(np.array(next_states)).to(self.device)
         dones = torch.FloatTensor(dones).to(self.device)
-    
+
         # Computed for all items in the memory-batch
         # Predicted Q-Values for current state (online-network)
-        q_values = self.q_network(states).gather(1, actions.unsqueeze(1)).squeeze(1) 
+        q_values = self.q_network(states).gather(1, actions.unsqueeze(1)).squeeze(1)
 
         # Next actions predicted by online-network
-        next_actions = self.q_network(next_states).argmax(dim=1) 
+        next_actions = self.q_network(next_states).argmax(dim=1)
 
         # Q-Values in the next state (target-network)
-        next_q_values = self.target_network(next_states).gather(1, next_actions.unsqueeze(1)).squeeze(1) 
+        next_q_values = (
+            self.target_network(next_states)
+            .gather(1, next_actions.unsqueeze(1))
+            .squeeze(1)
+        )
 
-        # Estimated future reward from taking action a in state s 
-        q_targets = rewards + self.gamma * next_q_values * (1 - dones) 
+        # Estimated future reward from taking action a in state s
+        q_targets = rewards + self.gamma * next_q_values * (1 - dones)
 
         # Actual learning
         # Loss (difference between prediction and target)
-        loss = nn.MSELoss()(q_values, q_targets) 
-        self.optimizer.zero_grad() # Reset gradients
-        loss.backward() # Backpropagation
-        self.optimizer.step() # Update weights
+        loss = nn.MSELoss()(q_values, q_targets)
+        self.optimizer.zero_grad()  # Reset gradients
+        loss.backward()  # Backpropagation
+        self.optimizer.step()  # Update weights
 
         self.episode_loss += loss.item()
 
@@ -253,7 +264,7 @@ class Agent:
         Args:
             state (np.array): The current state.
         ---------
-        
+
         Returns:
             int: The selected action.
         """
@@ -262,7 +273,7 @@ class Agent:
             return random.randrange(self.action_dim)
         else:
             # PyTorch needs (1, channels, height, width)
-            state = torch.FloatTensor(state).unsqueeze(0).to(self.device) 
+            state = torch.FloatTensor(state).unsqueeze(0).to(self.device)
             with torch.no_grad():
                 return torch.argmax(self.q_network(state)).item()
 
@@ -279,14 +290,16 @@ class Agent:
             None.
         """
         # For each step the agent does the network will be trained two times
-        for _ in range(2): 
+        for _ in range(2):
             self.update_online_network()
-        
-        # Update the target network every update_frequency-steps (memories made)
-        if self.steps_made % self.target_network_update_frequency == 0: 
-             self.target_network.load_state_dict(self.q_network.state_dict())
 
-    def create_checkpoint(self, checkpoint_path, memories_path, episode, completions, base_name):
+        # Update the target network every update_frequency-steps (memories made)
+        if self.steps_made % self.target_network_update_frequency == 0:
+            self.target_network.load_state_dict(self.q_network.state_dict())
+
+    def create_checkpoint(
+        self, checkpoint_path, memories_path, episode, completions, base_name
+    ):
         """
         Create and save a checkpoint of the agent's state, including the Q-network, target network, optimizer and replay memory.
         ---------
@@ -304,20 +317,20 @@ class Agent:
         """
         try:
             checkpoint_metadata = {
-                'q_network_state_dict': self.q_network.state_dict(),
-                'target_model_state_dict': self.target_network.state_dict(),
-                'optimizer_state_dict': self.optimizer.state_dict(),
-                'replay_size': self.replay_buffer.memories.maxlen,
-                'epsilon': self.epsilon,
-                'episode': episode,
-                'completions': completions,
-                'steps_made': self.steps_made,
-                'base_name': base_name
+                "q_network_state_dict": self.q_network.state_dict(),
+                "target_model_state_dict": self.target_network.state_dict(),
+                "optimizer_state_dict": self.optimizer.state_dict(),
+                "replay_size": self.replay_buffer.memories.maxlen,
+                "epsilon": self.epsilon,
+                "episode": episode,
+                "completions": completions,
+                "steps_made": self.steps_made,
+                "base_name": base_name,
             }
 
             torch.save(checkpoint_metadata, checkpoint_path)
-            
-            with open(memories_path, 'wb') as f:
+
+            with open(memories_path, "wb") as f:
                 pickle.dump(self.replay_buffer.memories, f)
 
         except Exception as e:
@@ -339,31 +352,35 @@ class Agent:
         try:
             checkpoint_metadata = torch.load(checkpoint_path, map_location=self.device)
 
-            self.q_network.load_state_dict(checkpoint_metadata['q_network_state_dict'])
-            self.target_network.load_state_dict(checkpoint_metadata['target_model_state_dict'])
-            self.optimizer.load_state_dict(checkpoint_metadata['optimizer_state_dict'])
-            self.epsilon = checkpoint_metadata['epsilon']
-            episode = checkpoint_metadata['episode']
-            completions = checkpoint_metadata['completions']
-            self.steps_made = checkpoint_metadata['steps_made']
-            base_name = checkpoint_metadata['base_name']
+            self.q_network.load_state_dict(checkpoint_metadata["q_network_state_dict"])
+            self.target_network.load_state_dict(
+                checkpoint_metadata["target_model_state_dict"]
+            )
+            self.optimizer.load_state_dict(checkpoint_metadata["optimizer_state_dict"])
+            self.epsilon = checkpoint_metadata["epsilon"]
+            episode = checkpoint_metadata["episode"]
+            completions = checkpoint_metadata["completions"]
+            self.steps_made = checkpoint_metadata["steps_made"]
+            base_name = checkpoint_metadata["base_name"]
 
-            # Load replay buffer 
+            # Load replay buffer
             if memories_path is not None:
-                replay_size = checkpoint_metadata['replay_size']
+                replay_size = checkpoint_metadata["replay_size"]
 
                 if os.path.isfile(memories_path):
-                    with open(memories_path, 'rb') as f:
+                    with open(memories_path, "rb") as f:
                         memories = pickle.load(f)
                     self.replay_buffer = ReplayMemory(replay_size)
                     self.replay_buffer.memories = deque(memories, maxlen=replay_size)
                 else:
-                    raise FileNotFoundError(f"Replay buffer file not found: {memories_path}")
+                    raise FileNotFoundError(
+                        f"Replay buffer file not found: {memories_path}"
+                    )
 
-            if 'memories' in locals():
+            if "memories" in locals():
                 del memories
             gc.collect()
-            
+
             return episode, completions, base_name
 
         except Exception as e:
@@ -382,5 +399,7 @@ class Agent:
         Returns:
             None.
         """
-        url = 'https://drive.google.com/file/d/1srxlOZYg-oNERTyVKHRy0trTDAsoMRWn/view?usp=sharing'
-        model_path = gdown.download(url, filepath, fuzzy=True, use_cookies=False, quiet=False)
+        url = "https://drive.google.com/file/d/1srxlOZYg-oNERTyVKHRy0trTDAsoMRWn/view?usp=sharing"
+        model_path = gdown.download(
+            url, filepath, fuzzy=True, use_cookies=False, quiet=False
+        )

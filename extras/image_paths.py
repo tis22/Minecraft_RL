@@ -9,22 +9,23 @@ source_folder = "./training_20241226_131530"
 output_csv = "image_paths.csv"
 image_extensions = {".png"}
 
+
 def get_sorted_image_paths(folder):
     """
     Collect image file paths from the folder and sort them by episode and step.
     --------
-    
+
     Args:
     folder (str):
         The path to the folder containing the images.
     ---------
-    
+
     Returns:
     list:
         A sorted list of image file paths.
     """
     image_paths = []
-    
+
     # Calculate the number of files for the tqdm-bar
     total_files = sum(len(files) for _, _, files in os.walk(folder))
 
@@ -41,12 +42,12 @@ def get_sorted_image_paths(folder):
         """
         Extract the episode and step numbers from the file name.
         --------
-        
+
         Args:
         file_name (str):
             The file name of the image from which the episode and step should be extracted.
         ---------
-        
+
         Returns:
         tuple:
             A tuple containing the episode and step numbers (episode, step).
@@ -58,32 +59,34 @@ def get_sorted_image_paths(folder):
             step = int(match.group(2))
             return (episode, step)
         # If the format does not fit, sort to the back.
-        return (float('inf'), float('inf'))  
+        return (float("inf"), float("inf"))
 
     # Sort the list by episode and step.
     image_paths.sort(key=lambda x: extract_episode_and_step(os.path.basename(x)))
     return image_paths
 
+
 def write_paths_to_csv(paths, output_file):
     """
     Write the image file paths to a CSV file.
     --------
-    
+
     Args:
     paths (list):
         A list of image file paths to be written to the CSV file.
     output_file (str):
         The path to the output file where the image paths will be written.
     ---------
-    
+
     Returns:
         None.
     """
-    with open(output_file, mode='w', newline='') as file:
+    with open(output_file, mode="w", newline="") as file:
         writer = csv.writer(file)
         writer.writerow(["image_path"])
         for path in tqdm(paths, desc="Writing to CSV"):
             writer.writerow([path])
+
 
 if __name__ == "__main__":
     print("Collect and sort image file paths...")

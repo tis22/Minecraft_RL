@@ -2,6 +2,7 @@ import cv2
 import csv
 from tqdm import tqdm
 
+
 def images_to_video(csv_path, video_file, framerate=30):
     """
     Create a video from images listed in a CSV file.
@@ -20,13 +21,13 @@ def images_to_video(csv_path, video_file, framerate=30):
         None.
     """
     image_paths = []
-    
+
     # Loading image paths from CSV
-    with open(csv_path, newline='') as csvfile:
+    with open(csv_path, newline="") as csvfile:
         reader = csv.reader(csvfile)
         next(reader)  # Skip header
         image_paths = [row[0].strip() for row in reader]
-    
+
     if not image_paths:
         print("No image paths found in the CSV.")
         return
@@ -44,9 +45,11 @@ def images_to_video(csv_path, video_file, framerate=30):
     if height < target_height or width < target_width:
         target_width = int(aspect_ratio * target_height)
 
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # Codec for MP4
-    video_writer = cv2.VideoWriter(video_file, fourcc, framerate, (target_width, target_height))
-    
+    fourcc = cv2.VideoWriter_fourcc(*"mp4v")  # Codec for MP4
+    video_writer = cv2.VideoWriter(
+        video_file, fourcc, framerate, (target_width, target_height)
+    )
+
     if not video_writer.isOpened():
         print("Error opening the video file.")
         return
@@ -57,7 +60,9 @@ def images_to_video(csv_path, video_file, framerate=30):
         frames_written = 0
         current_episode = None
 
-        for i, image_path in tqdm(enumerate(image_paths), desc="Processing images", ncols=100):
+        for i, image_path in tqdm(
+            enumerate(image_paths), desc="Processing images", ncols=100
+        ):
             image = cv2.imread(image_path)
             if image is None:
                 print(f"Error loading {image_path}")
@@ -69,16 +74,24 @@ def images_to_video(csv_path, video_file, framerate=30):
 
             # Extract the file name from the image path
             # Extracts only 'image_<episode>_<step>.png'
-            file_name = image_path.split('/')[-1].strip()  
+            file_name = image_path.split("/")[-1].strip()
 
             # Check for the expected format and get episode number and step number
-            if file_name.startswith('image') and file_name.count('_') == 2 and file_name.endswith('.png'):
+            if (
+                file_name.startswith("image")
+                and file_name.count("_") == 2
+                and file_name.endswith(".png")
+            ):
                 try:
-                    name_parts = file_name.replace('image_', '').replace('.png', '').split('_')
+                    name_parts = (
+                        file_name.replace("image_", "").replace(".png", "").split("_")
+                    )
                     episode_number = int(name_parts[0])
                     step_number = int(name_parts[1])
                 except (IndexError, ValueError) as e:
-                    print(f"Error parsing episode or step number in file: {file_name} -> {e}")
+                    print(
+                        f"Error parsing episode or step number in file: {file_name} -> {e}"
+                    )
                     continue
             else:
                 print(f"Unexpected file format: {file_name}")
@@ -99,8 +112,24 @@ def images_to_video(csv_path, video_file, framerate=30):
             step_position = (margin, vertical_gap + 30)
 
             # Add the numbers to the frame
-            cv2.putText(high_res_image, episode_text, episode_position, cv2.FONT_HERSHEY_SIMPLEX, font_scale, (255, 255, 255), 2)
-            cv2.putText(high_res_image, step_text, step_position, cv2.FONT_HERSHEY_SIMPLEX, font_scale * 0.8, (255, 255, 255), 2)
+            cv2.putText(
+                high_res_image,
+                episode_text,
+                episode_position,
+                cv2.FONT_HERSHEY_SIMPLEX,
+                font_scale,
+                (255, 255, 255),
+                2,
+            )
+            cv2.putText(
+                high_res_image,
+                step_text,
+                step_position,
+                cv2.FONT_HERSHEY_SIMPLEX,
+                font_scale * 0.8,
+                (255, 255, 255),
+                2,
+            )
 
             image_resized = cv2.resize(high_res_image, (target_width, target_height))
             video_writer.write(image_resized)
@@ -116,6 +145,7 @@ def images_to_video(csv_path, video_file, framerate=30):
         print("No frames were added to the video!")
     else:
         print(f"Video created successfully with {frames_written} frames.")
+
 
 if __name__ == "__main__":
     csv_path = "image_paths.csv"
