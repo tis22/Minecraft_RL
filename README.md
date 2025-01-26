@@ -214,7 +214,9 @@ The agent employs epsilon-greedy exploration and learns from past experiences st
 ---
 
 ## Extras
-This project includes two Python scripts designed to efficiently handle large sets of images (potentially hundreds of thousands) and create a video from them.
+This project includes two Python scripts designed to efficiently handle large sets of images (potentially hundreds of thousands) and create a video from them.  
+
+![episode99149](https://github.com/user-attachments/assets/bf279951-b4ac-4857-9eb9-f4b22bb2ef48)
 
 ---
 
