@@ -195,7 +195,7 @@ To visualize training progress or analyze a specific model's logs, use TensorBoa
    
 ---
 
-### Model
+## Model
 DDQN: Convolutional Neural Network with the last 4 RGB frames (12 channels)
 ![CNN](https://github.com/user-attachments/assets/cd23ef9c-57c7-49bd-b3c2-35b72c82799c)
 
@@ -203,6 +203,12 @@ DDQN: Convolutional Neural Network with the last 4 RGB frames (12 channels)
 The model approximates Q-values for each possible action based on the current state (current frame & last three frames) that the agent observes and selects actions accordingly.
 The actions the agent can take are: move forward, move backward, turn left and turn right, allowing it to navigate in all directions.
 The agent employs epsilon-greedy exploration and learns from past experiences stored in a replay memory.
+
+### Pre Trained model  
+
+[Model after 120k Episodes](https://drive.google.com/file/d/1srxlOZYg-oNERTyVKHRy0trTDAsoMRWn/view?usp=sharing)  
+
+[Logs after 120k Episodes](https://drive.google.com/file/d/1BimbzsvLJVmOSMbnMvYY_zb0Uo4YLOKj/view?usp=sharing)  
 
 ---
 
