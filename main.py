@@ -17,6 +17,15 @@ from threading import Thread, Event
 import re
 
 def train():
+    """
+    Train the Minecraft agent using Reinforcement Learning.
+    Initializes the environment and agent and runs a training loop where the agent interacts with the environment.
+    During training, the agent updates its model, saves checkpoints and logs metrics.
+    ---------
+
+    Returns:
+        None.
+    """
     global mission, port, server, server2, port2, role, experimentUniqueId, resume_episode, episode, resync, permanent_checkpoint_interval, batch_size, replay_size
     xml = Path(mission).read_text()
     env = malmoenv.make()
@@ -173,6 +182,16 @@ def train():
 
 
 def evaluate():
+    """
+    Evaluate the performance of the trained Minecraft agent.
+    Loads a trained model, runs the agent in the evaluation environment and tracks its performance.
+    Downloads the model if it is missing.
+    The evaluation can involve multiple agents running simultaneously.
+    ---------
+
+    Returns:
+        None.
+    """
     # Agent creation
     mc_agent = Agent(replay_size, batch_size)
 
@@ -211,6 +230,23 @@ def evaluate():
 
 
 def run_evaluate(role, global_stop_event, agent_done_event, xml, mc_agent):
+    """
+    Run the evaluation for a single agent role.
+    This function handles the agent's actions during evaluation, updating its state, performing actions and logging rewards.
+    It runs until the agent either succeeds, fails or the global stop event is triggered.
+    ---------
+
+    Args:
+        role (int): The role of the agent (0 for agent, 1 for spectator).
+        global_stop_event (Event): Event to signal when to stop the evaluation.
+        agent_done_event (Event): Event to signal when the agent is done.
+        xml (str): The XML configuration for the mission.
+        mc_agent (Agent): The trained agent that will perform the evaluation.
+    ---------
+
+    Returns:
+        None.
+    """
     env = malmoenv.make()
     env.init(xml, port,
              server=server,
@@ -280,13 +316,49 @@ def run_evaluate(role, global_stop_event, agent_done_event, xml, mc_agent):
     env.close()
 
 def wait_for_stop(global_stop_event):
+    """
+    Waits for the user to press Enter to stop the evaluation loop.
+    ---------
+
+    Args:
+        global_stop_event (Event): Event to trigger when the user chooses to stop.
+    ---------
+
+    Returns:
+        None.
+    """
     input("Press Enter to stop...\n")
     global_stop_event.set()
 
 def log(message):
+    """
+    Formats and prints a message to the console with the role of the agent included.
+    ---------
+    
+    Args:
+        message (str): The message to log.
+    ---------
+
+    Returns:
+        None.
+    """
     print(f'[{role}] {message}')
 
 def start_tensorboard(log_dir=None, download=False):
+    """
+    Start TensorBoard for visualizing training logs.
+    --------
+
+    Args:
+    log_dir (str):
+        The directory containing TensorBoard logs. Defaults to None.
+    download (bool):
+        If True, download logs from Google Drive before starting TensorBoard. Defaults to False.
+    ---------
+
+    Returns:
+        None.
+    """
     if not os.path.exists('runs'):
         os.makedirs('runs')
     

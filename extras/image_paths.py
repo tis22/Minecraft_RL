@@ -76,7 +76,7 @@ def write_paths_to_csv(paths, output_file):
     ---------
     
     Returns:
-    None.
+        None.
     """
     with open(output_file, mode='w', newline='') as file:
         writer = csv.writer(file)

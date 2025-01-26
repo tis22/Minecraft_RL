@@ -17,7 +17,7 @@ def images_to_video(csv_path, video_file, framerate=30):
     ---------
 
     Returns:
-    None.
+        None.
     """
     image_paths = []
     
