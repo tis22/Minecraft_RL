@@ -30,10 +30,12 @@ class ExperienceBuffer:
         self.width = width
         self.channels = channels
         self.trace_length = trace_length
-        self.buffer = deque(maxlen=trace_length) # maxlen enables automatic deletion of oldest frame
+        # maxlen enables automatic deletion of oldest frame
+        self.buffer = deque(maxlen=trace_length) 
         reshaped_obs = initial_frame.reshape((self.height, self.width, self.channels))
         
-        for _ in range(self.trace_length): # Append trace_length-times the current frame
+        # Append trace_length-times the current frame
+        for _ in range(self.trace_length): 
             self.buffer.append(reshaped_obs)
     
     def add_frame(self, frame):
@@ -155,9 +157,11 @@ class Agent:
         self.learningRate = learning_rate
         self.epsilon = epsilon
         self.epsilon_end = epsilon_end
-        self.epsilon_decay = epsilon_decay # Calculated, depends on amount of episodes (100.000)
+        # Epsilon decay is calculated, depends on amount of episodes (100.000)
+        self.epsilon_decay = epsilon_decay 
         self.target_network_update_frequency = target_network_update_frequency
-        self.device = torch.device(device if device else ("cuda" if torch.cuda.is_available() else "cpu")) # Select CUDA or CPU
+        # Select CUDA or CPU
+        self.device = torch.device(device if device else ("cuda" if torch.cuda.is_available() else "cpu")) 
         self.min_memories = min_memories
         self.q_network = self.create_model().to(self.device)
         self.target_network = self.create_model().to(self.device)
@@ -204,25 +208,37 @@ class Agent:
         Returns:
             None.
         """
-        if len(self.replay_buffer.memories) < self.min_memories: # Return if the ReplayMemory doesn't have enough memories yet
+        # Return if the ReplayMemory doesn't have enough memories yet
+        if len(self.replay_buffer.memories) < self.min_memories: 
             return
 
         states, actions, rewards, next_states, dones = self.replay_buffer.get_memories(self.batch_size)
         
-        states = torch.FloatTensor(np.array(states)).to(self.device) # Adds batch dim (batch_size, channels, height, width)
+        # Adds batch dim (batch_size, channels, height, width)
+        states = torch.FloatTensor(np.array(states)).to(self.device) 
         actions = torch.LongTensor(actions).to(self.device)
         rewards = torch.FloatTensor(rewards).to(self.device)
-        next_states = torch.FloatTensor(np.array(next_states)).to(self.device) # Adds batch dim (batch_size, channels, height, width)
+
+        # Adds batch dim (batch_size, channels, height, width)
+        next_states = torch.FloatTensor(np.array(next_states)).to(self.device) 
         dones = torch.FloatTensor(dones).to(self.device)
     
         # Computed for all items in the memory-batch
-        q_values = self.q_network(states).gather(1, actions.unsqueeze(1)).squeeze(1) # Predicted Q-Values for current state (online-network)
-        next_actions = self.q_network(next_states).argmax(dim=1) # Next actions predicted by online-network
-        next_q_values = self.target_network(next_states).gather(1, next_actions.unsqueeze(1)).squeeze(1) # Q-Values in the next state (target-network)
-        q_targets = rewards + self.gamma * next_q_values * (1 - dones) # Estimated future reward from taking action a in state s 
+        # Predicted Q-Values for current state (online-network)
+        q_values = self.q_network(states).gather(1, actions.unsqueeze(1)).squeeze(1) 
+
+        # Next actions predicted by online-network
+        next_actions = self.q_network(next_states).argmax(dim=1) 
+
+        # Q-Values in the next state (target-network)
+        next_q_values = self.target_network(next_states).gather(1, next_actions.unsqueeze(1)).squeeze(1) 
+
+        # Estimated future reward from taking action a in state s 
+        q_targets = rewards + self.gamma * next_q_values * (1 - dones) 
 
         # Actual learning
-        loss = nn.MSELoss()(q_values, q_targets) # Loss (difference between prediction and target)
+        # Loss (difference between prediction and target)
+        loss = nn.MSELoss()(q_values, q_targets) 
         self.optimizer.zero_grad() # Reset gradients
         loss.backward() # Backpropagation
         self.optimizer.step() # Update weights
@@ -245,7 +261,8 @@ class Agent:
         if random.random() <= self.epsilon:
             return random.randrange(self.action_dim)
         else:
-            state = torch.FloatTensor(state).unsqueeze(0).to(self.device) # PyTorch needs (1, channels, height, width)
+            # PyTorch needs (1, channels, height, width)
+            state = torch.FloatTensor(state).unsqueeze(0).to(self.device) 
             with torch.no_grad():
                 return torch.argmax(self.q_network(state)).item()
 
@@ -261,10 +278,12 @@ class Agent:
         Returns:
             None.
         """
-        for _ in range(2): # For each step the agent does the network will be trained two times
+        # For each step the agent does the network will be trained two times
+        for _ in range(2): 
             self.update_online_network()
         
-        if self.steps_made % self.target_network_update_frequency == 0: # Update the target network every update_frequency-steps (memories made)
+        # Update the target network every update_frequency-steps (memories made)
+        if self.steps_made % self.target_network_update_frequency == 0: 
              self.target_network.load_state_dict(self.q_network.state_dict())
 
     def create_checkpoint(self, checkpoint_path, memories_path, episode, completions, base_name):

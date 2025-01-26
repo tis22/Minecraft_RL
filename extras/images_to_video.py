@@ -68,7 +68,8 @@ def images_to_video(csv_path, video_file, framerate=30):
             image = cv2.flip(image, -1)
 
             # Extract the file name from the image path
-            file_name = image_path.split('/')[-1].strip()  # Extracts only 'image_<episode>_<step>.png'
+            # Extracts only 'image_<episode>_<step>.png'
+            file_name = image_path.split('/')[-1].strip()  
 
             # Check for the expected format and get episode number and step number
             if file_name.startswith('image') and file_name.count('_') == 2 and file_name.endswith('.png'):

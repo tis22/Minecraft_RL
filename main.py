@@ -155,7 +155,8 @@ def train():
         if mc_agent.epsilon > mc_agent.epsilon_end:
             mc_agent.epsilon *= mc_agent.epsilon_decay
 
-        if done == True and reward >= 0.98: # Has to be the reward defined in the XML (current reward for (reaching goal = 1) + (-0.01 per Step))
+        if done == True and reward >= 0.98: 
+            # Has to be the reward defined in the XML (current reward for (reaching goal = 1) + (-0.01 per Step))
             completions += 1
             writer.add_scalar('Reward per completion', episode_reward, completions)
         
@@ -164,7 +165,9 @@ def train():
         writer.add_scalar('Reward', episode_reward, episode)
         writer.add_scalar('Reward/step per episode', episode_reward / steps, episode)
         writer.add_scalar('Steps', steps, episode)
-        writer.add_scalar('Average loss', mc_agent.episode_loss	/ steps * 2 , episode) # *2 due to two times training per step
+
+        # Steps *2 due to two times training per step
+        writer.add_scalar('Average loss', mc_agent.episode_loss	/ steps * 2 , episode) 
         writer.add_scalar('Completions', completions, episode)
 
         # Create checkpoint
@@ -265,7 +268,8 @@ def run_evaluate(role, global_stop_event, agent_done_event, xml, mc_agent):
         # Initial observation and creation ExperienceBuffer
         obs = env.reset()
         if role == 0:
-            experience_buffer = ExperienceBuffer(obs, h, w, c) # Will be recreated every episode
+            # Will be recreated every episode
+            experience_buffer = ExperienceBuffer(obs, h, w, c) 
         steps = 0
         done = False
         total_reward = 0

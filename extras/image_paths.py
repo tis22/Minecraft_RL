@@ -57,7 +57,8 @@ def get_sorted_image_paths(folder):
             episode = int(match.group(1))
             step = int(match.group(2))
             return (episode, step)
-        return (float('inf'), float('inf'))  # If the format does not fit, sort to the back.
+        # If the format does not fit, sort to the back.
+        return (float('inf'), float('inf'))  
 
     # Sort the list by episode and step.
     image_paths.sort(key=lambda x: extract_episode_and_step(os.path.basename(x)))
