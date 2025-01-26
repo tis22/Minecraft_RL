@@ -5,7 +5,7 @@ The agent learns to navigate through a maze to a specified goal using visual inp
 [**Minecraft Malmo**](https://github.com/microsoft/malmo) is used for the implementation, providing a platform to utilize Minecraft as a training environment for Reinforcement Learning. 
 **TensorBoard** is employed to visualize the learning progress, tracking and displaying the agent's performance throughout the training process.
 
-![topdown](https://github.com/user-attachments/assets/dbd82d50-6775-465a-b09f-e8876beb5c1f)
+![topdown](https://github.com/user-attachments/assets/9e50ff8a-b1a2-4fd1-8aa9-d86885cabe25)
 
 The goal of the agent is to find an optimal strategy to navigate through the maze without falling into lava, while passing through intermediate waypoints (sandstone) and completing the task by stepping on the diamond block in as few steps as possible.
 
