@@ -109,6 +109,8 @@ However, the compilation should work without manual intervention as well.
 ---
 
 ## Usage
+*Note: An active internet connection is required at the start of the compilation process for Minecraft Malmo (launching the environment).*  
+
 ### Training the agent
 If you want to train the agent, the program checks whether there is an existing training session (e.g. the `runs`, `checkpoints` and `images` directories should exist).  
 - If the last checkpoint is found, training resumes from the next episode.  
