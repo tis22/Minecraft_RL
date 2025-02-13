@@ -20,7 +20,7 @@
         The script can process around 40,000 images per minute, allowing it to handle large volumes of images in a short amount of time.
    
     **How to use:**  
-        Ensure you have a bilder_pfade.csv file with the sorted image paths.
+        Ensure you have a image_paths.csv file with the sorted image paths.
         Run the script to generate a video (default output file: `output.mp4`).
   
 ***Note: The scripts are optimized for the default frame size (84x84) specified in the mission XML.***
